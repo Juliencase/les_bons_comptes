@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useStore } from './src/lib/store';
+import GamesScreen from './src/screens/GamesScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import SetupScreen from './src/screens/SetupScreen';
 import RoundScreen from './src/screens/RoundScreen';
@@ -20,6 +21,8 @@ export default function App() {
         <View style={styles.loading}>
           <ActivityIndicator color={colors.gold} size="large" />
         </View>
+      ) : screen === 'home' ? (
+        <HomeScreen />
       ) : screen === 'setup' ? (
         <SetupScreen />
       ) : screen === 'round' ? (
@@ -27,7 +30,7 @@ export default function App() {
       ) : screen === 'scoreboard' ? (
         <ScoreboardScreen />
       ) : (
-        <HomeScreen />
+        <GamesScreen />
       )}
     </SafeAreaProvider>
   );

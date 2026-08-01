@@ -95,7 +95,7 @@ type Actions = {
 export const useStore = create<State & Actions>()(
   persist(
     (set, get) => ({
-      screen: 'home',
+      screen: 'games',
       game: null,
       hydrated: false,
 

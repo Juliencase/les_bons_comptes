@@ -1,4 +1,4 @@
-// Écran d'accueil : nouvelle partie, reprendre, ou voir le dernier tableau.
+// Écran d'accueil Skull King : nouvelle partie, reprendre, ou voir le dernier tableau.
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,14 +15,17 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <View style={styles.header}>
+        <Pressable onPress={() => setScreen('games')} hitSlop={10}>
+          <Text style={styles.back}>‹ Jeux</Text>
+        </Pressable>
+      </View>
+
       <View style={styles.container}>
         <View style={styles.hero}>
-          <Text style={styles.brandEmoji}>🎲</Text>
-          <Text style={styles.title}>Les Bons Comptes</Text>
-          <Text style={styles.subtitle}>Le compteur qui ne se trompe jamais</Text>
-          <View style={styles.gameChip}>
-            <Text style={styles.gameChipText}>☠️  Skull King</Text>
-          </View>
+          <Text style={styles.gameEmoji}>☠️</Text>
+          <Text style={styles.title}>Skull King</Text>
+          <Text style={styles.subtitle}>Compteur de points</Text>
         </View>
 
         <View style={styles.actions}>
@@ -70,38 +73,34 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+  },
+  back: { color: colors.gold, fontSize: 16, fontWeight: '600' },
   container: {
     flex: 1,
     padding: spacing.xl,
     justifyContent: 'space-between',
   },
-  hero: { alignItems: 'center', marginTop: spacing.xxl * 1.5 },
-  brandEmoji: { fontSize: 64 },
+  hero: { alignItems: 'center', marginTop: spacing.xxl },
+  gameEmoji: { fontSize: 72 },
   title: {
     color: colors.gold,
-    fontSize: 34,
+    fontSize: 40,
     fontWeight: '800',
     marginTop: spacing.md,
-    letterSpacing: 0.5,
+    letterSpacing: 1,
     textAlign: 'center',
   },
   subtitle: {
     color: colors.textDim,
-    fontSize: 15,
+    fontSize: 16,
     marginTop: spacing.xs,
     textAlign: 'center',
-    fontStyle: 'italic',
   },
-  gameChip: {
-    marginTop: spacing.lg,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-  },
-  gameChipText: { color: colors.text, fontSize: 14, fontWeight: '700' },
   actions: { gap: spacing.md },
   primary: {
     backgroundColor: colors.gold,

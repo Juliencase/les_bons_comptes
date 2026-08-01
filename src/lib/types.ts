@@ -1,6 +1,6 @@
 // Types du domaine Skull King (v1 : système classique, format standard)
 
-export type Screen = 'home' | 'setup' | 'round' | 'scoreboard';
+export type Screen = 'games' | 'home' | 'setup' | 'round' | 'scoreboard';
 
 export type Player = {
   id: string;

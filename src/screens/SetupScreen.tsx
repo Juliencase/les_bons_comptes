@@ -52,10 +52,12 @@ export default function SetupScreen() {
       >
         <View style={styles.header}>
           <Pressable onPress={() => setScreen('home')} hitSlop={10}>
-            <Text style={styles.back}>‹ Retour</Text>
+            <Text style={styles.back} numberOfLines={1}>
+              ‹ Retour
+            </Text>
           </Pressable>
           <Text style={styles.title}>Les joueurs</Text>
-          <View style={{ width: 60 }} />
+          <View style={{ width: 80 }} />
         </View>
 
         <ScrollView
@@ -129,7 +131,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
-  back: { color: colors.gold, fontSize: 16, fontWeight: '600', width: 60 },
+  back: { color: colors.gold, fontSize: 16, fontWeight: '600', width: 80 },
   title: { color: colors.text, fontSize: 20, fontWeight: '800' },
   list: { padding: spacing.lg, gap: spacing.md },
   rowItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
