@@ -1,0 +1,189 @@
+// Écran de configuration : saisie des joueurs (2 à 8).
+import React, { useState } from 'react';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useStore } from '../lib/store';
+import { MAX_PLAYERS, MIN_PLAYERS } from '../lib/types';
+import { colors, radius, spacing } from '../theme';
+
+export default function SetupScreen() {
+  const setScreen = useStore((s) => s.setScreen);
+  const startGame = useStore((s) => s.startGame);
+
+  const [names, setNames] = useState<string[]>(['', '']);
+
+  const setName = (i: number, v: string) =>
+    setNames((prev) => prev.map((n, idx) => (idx === i ? v : n)));
+
+  const addPlayer = () =>
+    setNames((prev) =>
+      prev.length < MAX_PLAYERS ? [...prev, ''] : prev,
+    );
+
+  const removePlayer = (i: number) =>
+    setNames((prev) =>
+      prev.length > MIN_PLAYERS ? prev.filter((_, idx) => idx !== i) : prev,
+    );
+
+  const trimmed = names.map((n) => n.trim());
+  const filled = trimmed.filter((n) => n.length > 0);
+  const canStart = filled.length >= MIN_PLAYERS;
+
+  const start = () => {
+    // Complète les noms vides par un libellé par défaut, en gardant l'ordre.
+    const finalNames = trimmed.map((n, i) => (n.length > 0 ? n : `Joueur ${i + 1}`));
+    startGame(finalNames);
+  };
+
+  return (
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={styles.header}>
+          <Pressable onPress={() => setScreen('home')} hitSlop={10}>
+            <Text style={styles.back}>‹ Retour</Text>
+          </Pressable>
+          <Text style={styles.title}>Les joueurs</Text>
+          <View style={{ width: 60 }} />
+        </View>
+
+        <ScrollView
+          contentContainerStyle={styles.list}
+          keyboardShouldPersistTaps="handled"
+        >
+          {names.map((name, i) => (
+            <View key={i} style={styles.rowItem}>
+              <Text style={styles.index}>{i + 1}</Text>
+              <TextInput
+                style={styles.input}
+                value={name}
+                placeholder={`Joueur ${i + 1}`}
+                placeholderTextColor={colors.textDim}
+                onChangeText={(t) => setName(i, t)}
+                maxLength={16}
+                returnKeyType="done"
+              />
+              {names.length > MIN_PLAYERS && (
+                <Pressable
+                  onPress={() => removePlayer(i)}
+                  hitSlop={8}
+                  style={styles.remove}
+                >
+                  <Text style={styles.removeText}>✕</Text>
+                </Pressable>
+              )}
+            </View>
+          ))}
+
+          {names.length < MAX_PLAYERS && (
+            <Pressable
+              style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
+              onPress={addPlayer}
+            >
+              <Text style={styles.addText}>+ Ajouter un joueur</Text>
+            </Pressable>
+          )}
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <Text style={styles.hint}>
+            {canStart
+              ? `${filled.length} joueur${filled.length > 1 ? 's' : ''} · 10 manches`
+              : `Au moins ${MIN_PLAYERS} joueurs`}
+          </Text>
+          <Pressable
+            disabled={!canStart}
+            style={({ pressed }) => [
+              styles.primary,
+              !canStart && styles.disabled,
+              pressed && canStart && styles.pressed,
+            ]}
+            onPress={start}
+          >
+            <Text style={styles.primaryText}>Commencer la partie</Text>
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.bg },
+  flex: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  back: { color: colors.gold, fontSize: 16, fontWeight: '600', width: 60 },
+  title: { color: colors.text, fontSize: 20, fontWeight: '800' },
+  list: { padding: spacing.lg, gap: spacing.md },
+  rowItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  index: {
+    color: colors.gold,
+    fontWeight: '800',
+    fontSize: 16,
+    width: 22,
+    textAlign: 'center',
+  },
+  input: {
+    flex: 1,
+    height: 50,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+    color: colors.text,
+    paddingHorizontal: spacing.md,
+    fontSize: 16,
+  },
+  remove: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.cardAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removeText: { color: colors.negative, fontSize: 16, fontWeight: '700' },
+  addBtn: {
+    marginTop: spacing.sm,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+  },
+  addText: { color: colors.textDim, fontSize: 15, fontWeight: '600' },
+  footer: {
+    padding: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.sm,
+  },
+  hint: { color: colors.textDim, textAlign: 'center', fontSize: 13 },
+  primary: {
+    backgroundColor: colors.gold,
+    paddingVertical: spacing.lg,
+    borderRadius: radius.md,
+    alignItems: 'center',
+  },
+  primaryText: { color: colors.bg, fontSize: 18, fontWeight: '800' },
+  disabled: { opacity: 0.4 },
+  pressed: { opacity: 0.7 },
+});

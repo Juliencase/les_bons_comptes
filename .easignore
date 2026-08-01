@@ -1,0 +1,5 @@
+# Fichiers exclus de l'upload vers EAS Build (compilation cloud).
+docs/
+iconsrc/
+dist-check/
+*.pdf

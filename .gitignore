@@ -39,3 +39,32 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Icônes générées (aperçus)
+iconsrc/preview/
+
+# Dossiers temporaires de build/test
+dist-check/
+
+# Binaires d'app (builds téléchargés)
+*.apk
+*.aab
+*.ipa
+
+# Secrets & credentials (défense préventive)
+credentials.json
+*.keystore
+google-services.json
+GoogleService-Info.plist
+.env
+.env.*
+!.env.example
+
+# Config locale de l'assistant
+.claude/
+
+# Divers
+*.log
+Thumbs.db
+ehthumbs.db
+Desktop.ini
