@@ -5,7 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useStore } from '../lib/store';
 import { Screen } from '../lib/types';
-import { colors, radius, spacing } from '../theme';
+import { colors, opacity, radius, spacing } from '../theme';
 
 type GameDef = {
   key: string;
@@ -131,8 +131,8 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.md,
   },
-  cardDisabled: { opacity: 0.55 },
-  pressed: { opacity: 0.7 },
+  cardDisabled: { opacity: 0.55 }, // dim volontairement plus léger qu'un vrai « disabled » : le libellé « Bientôt » doit rester lisible.
+  pressed: { opacity: opacity.pressed },
   cardEmoji: { fontSize: 34 },
   cardBody: { flex: 1 },
   cardName: { color: colors.text, fontSize: 19, fontWeight: '800' },

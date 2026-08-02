@@ -1,7 +1,7 @@
 // Sélecteur d'entier borné avec boutons - / +.
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, radius, spacing } from '../theme';
+import { colors, opacity, radius, spacing } from '../theme';
 
 type Props = {
   value: number | null;
@@ -10,6 +10,9 @@ type Props = {
   onChange: (value: number) => void;
   placeholder?: string;
   accent?: string;
+  /** Libellés d'accessibilité des boutons − / + (ex. "Diminuer la mise"). */
+  decrementLabel?: string;
+  incrementLabel?: string;
 };
 
 export default function Stepper({
@@ -19,6 +22,8 @@ export default function Stepper({
   onChange,
   placeholder = '—',
   accent = colors.gold,
+  decrementLabel = 'Diminuer',
+  incrementLabel = 'Augmenter',
 }: Props) {
   const current = value ?? min;
   const canDec = value != null && current > min;
@@ -38,9 +43,11 @@ export default function Stepper({
       <Pressable
         onPress={dec}
         disabled={!canDec}
+        accessibilityRole="button"
+        accessibilityLabel={decrementLabel}
         style={({ pressed }) => [
           styles.btn,
-          { opacity: canDec ? (pressed ? 0.6 : 1) : 0.3 },
+          { opacity: canDec ? (pressed ? opacity.pressedSubtle : 1) : opacity.disabled },
         ]}
         hitSlop={8}
       >
@@ -56,9 +63,11 @@ export default function Stepper({
       <Pressable
         onPress={inc}
         disabled={!canInc}
+        accessibilityRole="button"
+        accessibilityLabel={incrementLabel}
         style={({ pressed }) => [
           styles.btn,
-          { opacity: canInc ? (pressed ? 0.6 : 1) : 0.3 },
+          { opacity: canInc ? (pressed ? opacity.pressedSubtle : 1) : opacity.disabled },
         ]}
         hitSlop={8}
       >

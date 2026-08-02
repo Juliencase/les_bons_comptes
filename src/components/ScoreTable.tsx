@@ -8,6 +8,7 @@ import {
   isEntryComplete,
   roundTotal,
 } from '../lib/scoring';
+import { formatSignedScore } from '../lib/format';
 import { Game } from '../lib/types';
 
 const NAME_COL = 120;
@@ -59,7 +60,7 @@ export default function ScoreTable({ game }: { game: Game }) {
                           : styles.negative,
                     ]}
                   >
-                    {val == null ? '·' : val > 0 ? `+${val}` : val}
+                    {val == null ? '·' : formatSignedScore(val)}
                   </Text>
                 </View>
               );

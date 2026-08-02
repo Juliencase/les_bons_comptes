@@ -3,7 +3,6 @@ import React from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,7 +10,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useStore } from '../lib/store';
+import Button from '../components/Button';
+import IconButton from '../components/IconButton';
 import PlayerRoundRow from '../components/PlayerRoundRow';
+import ScreenHeader from '../components/ScreenHeader';
 import { colors, radius, spacing } from '../theme';
 import {
   cardsForRound,
@@ -48,20 +50,13 @@ export default function RoundScreen() {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.header}>
-          <Pressable onPress={() => setScreen('home')} hitSlop={10}>
-            <Text style={styles.headerBtn}>☰</Text>
-          </Pressable>
-          <View style={styles.headerCenter}>
-            <Text style={styles.title}>
-              Manche {round}/{game.totalRounds}
-            </Text>
-            <Text style={styles.subtitle}>{cards} carte{cards > 1 ? 's' : ''}</Text>
-          </View>
-          <Pressable onPress={() => setScreen('scoreboard')} hitSlop={10}>
-            <Text style={styles.headerBtn}>📊</Text>
-          </Pressable>
-        </View>
+        <ScreenHeader
+          left={<IconButton icon="☰" label="Retour à l'accueil" onPress={() => setScreen('home')} />}
+          title={`Manche ${round}/${game.totalRounds}`}
+          subtitle={`${cards} carte${cards > 1 ? 's' : ''}`}
+          right={<IconButton icon="📊" label="Voir le tableau des scores" onPress={() => setScreen('scoreboard')} />}
+          bordered
+        />
 
         <ScrollView
           contentContainerStyle={styles.list}
@@ -101,29 +96,17 @@ export default function RoundScreen() {
 
         <View style={styles.footer}>
           {round > 1 && (
-            <Pressable
-              style={({ pressed }) => [
-                styles.prevBtn,
-                pressed && styles.pressed,
-              ]}
+            <Button
+              variant="ghost"
+              label="‹ Manche précédente"
               onPress={() => goToRound(round - 1)}
-            >
-              <Text style={styles.prevText}>‹ Manche précédente</Text>
-            </Pressable>
+            />
           )}
-          <Pressable
+          <Button
             disabled={!allComplete}
-            style={({ pressed }) => [
-              styles.primary,
-              !allComplete && styles.disabled,
-              pressed && allComplete && styles.pressed,
-            ]}
+            label={isLast ? 'Terminer la partie' : 'Valider la manche ›'}
             onPress={commitRound}
-          >
-            <Text style={styles.primaryText}>
-              {isLast ? 'Terminer la partie' : 'Valider la manche ›'}
-            </Text>
-          </Pressable>
+          />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -133,19 +116,6 @@ export default function RoundScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  headerBtn: { fontSize: 22, color: colors.gold },
-  headerCenter: { alignItems: 'center' },
-  title: { color: colors.text, fontSize: 20, fontWeight: '800' },
-  subtitle: { color: colors.gold, fontSize: 13, fontWeight: '600' },
   list: { padding: spacing.lg },
   warning: {
     backgroundColor: 'rgba(224,169,46,0.12)',
@@ -162,15 +132,4 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     gap: spacing.sm,
   },
-  prevBtn: { alignItems: 'center', paddingVertical: spacing.sm },
-  prevText: { color: colors.textDim, fontSize: 14, fontWeight: '600' },
-  primary: {
-    backgroundColor: colors.gold,
-    paddingVertical: spacing.lg,
-    borderRadius: radius.md,
-    alignItems: 'center',
-  },
-  primaryText: { color: colors.bg, fontSize: 18, fontWeight: '800' },
-  disabled: { opacity: 0.4 },
-  pressed: { opacity: 0.7 },
 });

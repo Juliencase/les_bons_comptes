@@ -40,9 +40,6 @@ yarn-error.*
 /ios
 /android
 
-# Icônes générées (aperçus)
-iconsrc/preview/
-
 # Dossiers temporaires de build/test
 dist-check/
 
@@ -60,8 +57,9 @@ GoogleService-Info.plist
 .env.*
 !.env.example
 
-# Config locale de l'assistant
-.claude/
+# Config locale de l'assistant (sauf les agents partagés)
+.claude/*
+!.claude/agents/
 
 # Divers
 *.log

@@ -1,9 +1,12 @@
 // Écran tableau des scores + classement / vainqueur.
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useStore } from '../lib/store';
+import BackButton from '../components/BackButton';
+import Button from '../components/Button';
 import ScoreTable from '../components/ScoreTable';
+import ScreenHeader from '../components/ScreenHeader';
+import { useStore } from '../lib/store';
 import { ranking } from '../lib/scoring';
 import { colors, radius, spacing } from '../theme';
 
@@ -23,15 +26,10 @@ export default function ScoreboardScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <View style={styles.header}>
-        <Pressable onPress={() => setScreen('home')} hitSlop={10}>
-          <Text style={styles.back} numberOfLines={1}>
-            ‹ Accueil
-          </Text>
-        </Pressable>
-        <Text style={styles.title}>{finished ? 'Résultat final' : 'Scores'}</Text>
-        <View style={{ width: 90 }} />
-      </View>
+      <ScreenHeader
+        left={<BackButton label="Accueil" onPress={() => setScreen('home')} />}
+        title={finished ? 'Résultat final' : 'Scores'}
+      />
 
       <ScrollView contentContainerStyle={styles.body}>
         {finished && rows.length > 0 && (
@@ -71,21 +69,12 @@ export default function ScoreboardScreen() {
 
       <View style={styles.footer}>
         {finished ? (
-          <Pressable
-            style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
-            onPress={() => setScreen('setup')}
-          >
-            <Text style={styles.primaryText}>Nouvelle partie</Text>
-          </Pressable>
+          <Button label="Nouvelle partie" onPress={() => setScreen('setup')} />
         ) : (
-          <Pressable
-            style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
+          <Button
+            label={`Reprendre la saisie (manche ${game.currentRound})`}
             onPress={() => goToRound(game.currentRound)}
-          >
-            <Text style={styles.primaryText}>
-              Reprendre la saisie (manche {game.currentRound})
-            </Text>
-          </Pressable>
+          />
         )}
       </View>
     </SafeAreaView>
@@ -94,15 +83,6 @@ export default function ScoreboardScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  back: { color: colors.gold, fontSize: 16, fontWeight: '600', width: 90 },
-  title: { color: colors.text, fontSize: 20, fontWeight: '800' },
   body: { padding: spacing.lg, gap: spacing.lg },
   winnerCard: {
     backgroundColor: colors.card,
@@ -153,12 +133,4 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-  primary: {
-    backgroundColor: colors.gold,
-    paddingVertical: spacing.lg,
-    borderRadius: radius.md,
-    alignItems: 'center',
-  },
-  primaryText: { color: colors.bg, fontSize: 18, fontWeight: '800' },
-  pressed: { opacity: 0.7 },
 });

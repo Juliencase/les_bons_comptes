@@ -2,7 +2,7 @@
 // La valeur démarre à 0. Les boutons ajoutent leur montant ; le champ central est éditable.
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { colors, radius, spacing } from '../theme';
+import { colors, opacity, radius, spacing } from '../theme';
 
 type Props = {
   value: number;
@@ -54,6 +54,7 @@ export default function BonusButtons({ value, onChange }: Props) {
         textAlign="center"
         maxLength={5}
         selectTextOnFocus
+        accessibilityLabel="Bonus (saisie manuelle)"
       />
 
       <StepBtn label="+5" tone="pos" onPress={() => apply(5)} />
@@ -75,6 +76,8 @@ function StepBtn({
     <Pressable
       onPress={onPress}
       hitSlop={4}
+      accessibilityRole="button"
+      accessibilityLabel={`Bonus ${label}`}
       style={({ pressed }) => [
         styles.btn,
         tone === 'pos' ? styles.btnPos : styles.btnNeg,
@@ -106,7 +109,7 @@ const styles = StyleSheet.create({
   btnText: { fontSize: 14, fontWeight: '800' },
   negText: { color: colors.negative },
   posText: { color: colors.positive },
-  pressed: { opacity: 0.6 },
+  pressed: { opacity: opacity.pressedSubtle },
   input: {
     minWidth: 56,
     height: 36,

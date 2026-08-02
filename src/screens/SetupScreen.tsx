@@ -11,13 +11,19 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import BackButton from '../components/BackButton';
+import Button from '../components/Button';
+import ScreenHeader from '../components/ScreenHeader';
+import { confirmOverwriteGame } from '../lib/confirm';
 import { useStore } from '../lib/store';
 import { MAX_PLAYERS, MIN_PLAYERS } from '../lib/types';
-import { colors, radius, spacing } from '../theme';
+import { colors, opacity, radius, spacing } from '../theme';
 
 export default function SetupScreen() {
+  const game = useStore((s) => s.game);
   const setScreen = useStore((s) => s.setScreen);
   const startGame = useStore((s) => s.startGame);
+  const hasUnfinishedGame = !!game && !game.finishedAt;
 
   const [names, setNames] = useState<string[]>(['', '']);
 
@@ -41,6 +47,10 @@ export default function SetupScreen() {
   const start = () => {
     // Complète les noms vides par un libellé par défaut, en gardant l'ordre.
     const finalNames = trimmed.map((n, i) => (n.length > 0 ? n : `Joueur ${i + 1}`));
+    if (hasUnfinishedGame) {
+      confirmOverwriteGame(() => startGame(finalNames));
+      return;
+    }
     startGame(finalNames);
   };
 
@@ -50,15 +60,10 @@ export default function SetupScreen() {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.header}>
-          <Pressable onPress={() => setScreen('home')} hitSlop={10}>
-            <Text style={styles.back} numberOfLines={1}>
-              ‹ Retour
-            </Text>
-          </Pressable>
-          <Text style={styles.title}>Les joueurs</Text>
-          <View style={{ width: 80 }} />
-        </View>
+        <ScreenHeader
+          left={<BackButton label="Retour" onPress={() => setScreen('home')} />}
+          title="Les joueurs"
+        />
 
         <ScrollView
           contentContainerStyle={styles.list}
@@ -81,6 +86,8 @@ export default function SetupScreen() {
                   onPress={() => removePlayer(i)}
                   hitSlop={8}
                   style={styles.remove}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Supprimer le joueur ${i + 1}`}
                 >
                   <Text style={styles.removeText}>✕</Text>
                 </Pressable>
@@ -104,17 +111,7 @@ export default function SetupScreen() {
               ? `${filled.length} joueur${filled.length > 1 ? 's' : ''} · 10 manches`
               : `Au moins ${MIN_PLAYERS} joueurs`}
           </Text>
-          <Pressable
-            disabled={!canStart}
-            style={({ pressed }) => [
-              styles.primary,
-              !canStart && styles.disabled,
-              pressed && canStart && styles.pressed,
-            ]}
-            onPress={start}
-          >
-            <Text style={styles.primaryText}>Commencer la partie</Text>
-          </Pressable>
+          <Button label="Commencer la partie" disabled={!canStart} onPress={start} />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -124,15 +121,6 @@ export default function SetupScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  back: { color: colors.gold, fontSize: 16, fontWeight: '600', width: 80 },
-  title: { color: colors.text, fontSize: 20, fontWeight: '800' },
   list: { padding: spacing.lg, gap: spacing.md },
   rowItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   index: {
@@ -179,13 +167,5 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   hint: { color: colors.textDim, textAlign: 'center', fontSize: 13 },
-  primary: {
-    backgroundColor: colors.gold,
-    paddingVertical: spacing.lg,
-    borderRadius: radius.md,
-    alignItems: 'center',
-  },
-  primaryText: { color: colors.bg, fontSize: 18, fontWeight: '800' },
-  disabled: { opacity: 0.4 },
-  pressed: { opacity: 0.7 },
+  pressed: { opacity: opacity.pressed },
 });

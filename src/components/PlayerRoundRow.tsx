@@ -5,6 +5,7 @@ import Stepper from './Stepper';
 import BonusButtons from './BonusButtons';
 import { colors, radius, spacing } from '../theme';
 import { bidScore, isEntryComplete } from '../lib/scoring';
+import { formatSignedScore } from '../lib/format';
 import { RoundEntry } from '../lib/types';
 
 type Props = {
@@ -50,6 +51,8 @@ export default function PlayerRoundRow({
             max={cards}
             onChange={onBid}
             accent={colors.gold}
+            decrementLabel="Diminuer la mise"
+            incrementLabel="Augmenter la mise"
           />
         </View>
 
@@ -61,6 +64,8 @@ export default function PlayerRoundRow({
             max={cards}
             onChange={onTricks}
             accent={colors.goldSoft}
+            decrementLabel="Diminuer les plis"
+            incrementLabel="Augmenter les plis"
           />
         </View>
       </View>
@@ -82,11 +87,7 @@ export default function PlayerRoundRow({
                 : styles.negative,
           ]}
         >
-          {roundScore == null
-            ? '—'
-            : roundScore > 0
-              ? `+${roundScore}`
-              : `${roundScore}`}
+          {roundScore == null ? '—' : formatSignedScore(roundScore)}
         </Text>
       </View>
     </View>

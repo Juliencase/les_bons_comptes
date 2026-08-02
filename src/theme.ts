@@ -29,3 +29,15 @@ export const radius = {
   md: 12,
   lg: 16,
 };
+
+// Opacités partagées pour les retours d'interaction (Pressable) — évite les
+// valeurs magiques dupliquées et garantit un feedback tactile cohérent partout.
+export const opacity = {
+  /** Retour au toucher standard (boutons, cartes cliquables). */
+  pressed: 0.7,
+  /** Retour au toucher plus marqué pour les cibles petites/icône seule. */
+  pressedSubtle: 0.6,
+  /** Élément désactivé / non actionnable dans son état courant. */
+  disabled: 0.4,
+};
+
