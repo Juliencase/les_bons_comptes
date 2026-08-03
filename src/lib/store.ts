@@ -21,12 +21,12 @@ function makeId(prefix: string): string {
 
 /** Entrée d'une manche future : non jouée → ne compte pas dans les totaux. */
 function emptyEntry(): RoundEntry {
-  return { bid: null, tricks: null, bonus: 0 };
+  return { bid: null, tricks: null, bonus: 0, validated: false };
 }
 
 /** Entrée d'une manche atteinte : démarre à 0 (pas besoin de cliquer pour un 0). */
 function zeroEntry(): RoundEntry {
-  return { bid: 0, tricks: 0, bonus: 0 };
+  return { bid: 0, tricks: 0, bonus: 0, validated: false };
 }
 
 /** Initialise à 0 les entrées d'une manche encore vierges (sans écraser l'existant). */
@@ -127,15 +127,27 @@ export const useStore = create<State & Actions>()(
       commitRound: () => {
         const g = get().game;
         if (!g) return;
+        // Marque la manche actuelle comme validée
+        const roundEntries = g.rounds[g.currentRound] ?? {};
+        const validatedRound: Record<string, RoundEntry> = {};
+        for (const p of g.players) {
+          const entry = roundEntries[p.id] ?? emptyEntry();
+          validatedRound[p.id] = { ...entry, validated: true };
+        }
+        const gameWithValidated = {
+          ...g,
+          rounds: { ...g.rounds, [g.currentRound]: validatedRound },
+        };
+
         if (g.currentRound >= g.totalRounds) {
           set({
-            game: { ...g, finishedAt: Date.now() },
+            game: { ...gameWithValidated, finishedAt: Date.now() },
             screen: 'scoreboard',
           });
         } else {
           const next = g.currentRound + 1;
           // Initialise la manche suivante à 0 (si vierge) pour éviter les clics inutiles.
-          const withInit = initRoundToZero(g, next);
+          const withInit = initRoundToZero(gameWithValidated, next);
           set({ game: { ...withInit, currentRound: next } });
         }
       },

@@ -27,7 +27,12 @@ export default function ScoreboardScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <ScreenHeader
-        left={<BackButton label="Accueil" onPress={() => setScreen('home')} />}
+        left={
+          <BackButton
+            label={finished ? 'Accueil' : 'Retour'}
+            onPress={() => finished ? setScreen('home') : goToRound(game.currentRound)}
+          />
+        }
         title={finished ? 'Résultat final' : 'Scores'}
       />
 

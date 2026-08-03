@@ -37,12 +37,12 @@ export function roundTotal(entry: RoundEntry | undefined, cards: number): number
   return bidScore(entry.bid, entry.tricks, cards) + (entry.bonus ?? 0);
 }
 
-/** Total cumulé d'un joueur sur toutes les manches saisies. */
+/** Total cumulé d'un joueur sur toutes les manches validées. */
 export function cumulativeTotal(game: Game, playerId: string): number {
   let sum = 0;
   for (let r = 1; r <= game.totalRounds; r++) {
     const entry = game.rounds[r]?.[playerId];
-    if (isEntryComplete(entry)) {
+    if (entry?.validated && isEntryComplete(entry)) {
       sum += roundTotal(entry, cardsForRound(r));
     }
   }

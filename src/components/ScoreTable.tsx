@@ -36,37 +36,40 @@ export default function ScoreTable({ game }: { game: Game }) {
         </View>
 
         {/* Lignes des manches */}
-        {rounds.map((r) => (
-          <View key={r} style={styles.row}>
-            <View style={styles.roundLabel}>
-              <Text style={styles.roundLabelText}>
-                {r}
-                <Text style={styles.roundCards}>  ({cardsForRound(r)} c.)</Text>
-              </Text>
+        {rounds.map((r) => {
+          const isCurrent = r === game.currentRound;
+          return (
+            <View key={r} style={[styles.row, isCurrent && styles.currentRow]}>
+              <View style={[styles.roundLabel, isCurrent && styles.currentRoundLabel]}>
+                <Text style={[styles.roundLabelText, isCurrent && styles.currentRoundLabelText]}>
+                  {isCurrent && '▶ '}{r}
+                  <Text style={styles.roundCards}>  ({cardsForRound(r)} c.)</Text>
+                </Text>
+              </View>
+              {game.players.map((p) => {
+                const entry = game.rounds[r]?.[p.id];
+                const done = isEntryComplete(entry) && entry?.validated;
+                const val = done ? roundTotal(entry, cardsForRound(r)) : null;
+                return (
+                  <View key={p.id} style={[styles.cell, isCurrent && styles.currentCell]}>
+                    <Text
+                      style={[
+                        styles.cellText,
+                        val == null
+                          ? styles.cellEmpty
+                          : val >= 0
+                            ? styles.positive
+                            : styles.negative,
+                      ]}
+                    >
+                      {val == null ? '·' : formatSignedScore(val)}
+                    </Text>
+                  </View>
+                );
+              })}
             </View>
-            {game.players.map((p) => {
-              const entry = game.rounds[r]?.[p.id];
-              const done = isEntryComplete(entry);
-              const val = done ? roundTotal(entry, cardsForRound(r)) : null;
-              return (
-                <View key={p.id} style={styles.cell}>
-                  <Text
-                    style={[
-                      styles.cellText,
-                      val == null
-                        ? styles.cellEmpty
-                        : val >= 0
-                          ? styles.positive
-                          : styles.negative,
-                    ]}
-                  >
-                    {val == null ? '·' : formatSignedScore(val)}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
-        ))}
+          );
+        })}
 
         {/* Total */}
         <View style={[styles.row, styles.totalRow]}>
@@ -86,6 +89,7 @@ export default function ScoreTable({ game }: { game: Game }) {
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row' },
+  currentRow: { backgroundColor: 'rgba(224,169,46,0.08)' },
   corner: {
     width: NAME_COL,
     padding: spacing.sm,
@@ -113,7 +117,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     justifyContent: 'center',
   },
+  currentRoundLabel: { backgroundColor: 'rgba(224,169,46,0.15)', borderColor: colors.gold },
   roundLabelText: { color: colors.text, fontWeight: '600' },
+  currentRoundLabelText: { color: colors.gold, fontWeight: '700' },
   roundCards: { color: colors.textDim, fontWeight: '400', fontSize: 12 },
   cell: {
     width: CELL,
@@ -124,6 +130,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  currentCell: { backgroundColor: 'rgba(224,169,46,0.08)', borderColor: 'rgba(224,169,46,0.3)' },
   cellText: { fontSize: 14, fontWeight: '600' },
   cellEmpty: { color: colors.textDim },
   positive: { color: colors.positive },

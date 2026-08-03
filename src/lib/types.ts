@@ -12,6 +12,7 @@ export type RoundEntry = {
   bid: number | null; // mise annoncée (0..cartes) ; null tant que non saisie
   tricks: number | null; // plis remportés (0..cartes) ; null tant que non saisi
   bonus: number; // bonus libre (défaut 0, peut être négatif)
+  validated: boolean; // true une fois la manche validée et archivée
 };
 
 export type Game = {
