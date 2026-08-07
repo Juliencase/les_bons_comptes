@@ -6,11 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-"Les Bons Comptes" — a React Native (Expo) mobile app for score-keeping the card
-game **Skull King**. Local-only, offline, no backend: game state is persisted
-on-device via AsyncStorage. Full game rules (used to derive the scoring engine)
-are in [docs/REGLES_SKULL_KING.md](docs/REGLES_SKULL_KING.md) — read it before
-touching `src/lib/scoring.ts`.
+"Les Bons Comptes" — a React Native (Expo) mobile app for score-keeping card
+and board games. It's built to eventually host several games (see `GamesScreen`
+and its `GAMES` list, designed to grow); **Skull King** is the only one
+implemented so far. Local-only, offline, no backend: game state is persisted
+on-device via AsyncStorage. Full Skull King rules (used to derive its scoring
+engine) are in [docs/REGLES_SKULL_KING.md](docs/REGLES_SKULL_KING.md) — read it
+before touching `src/lib/scoring.ts`.
 
 ## Commands
 
@@ -59,7 +61,16 @@ components directly (`HomeScreen`, `SetupScreen`, `GamesScreen`, `RoundScreen`,
   navigation access from here — data and callbacks come from the parent
   screen. Keep it that way when adding components.
 - **`src/theme.ts`** — shared design tokens (`colors`, `spacing`, `radius`,
-  `opacity`). Use these instead of magic values/inline colors.
+  `opacity`, `goldTint`). Use these instead of magic values/inline colors.
+- **Post-game score editing**: once `game.finishedAt` is set, `ScoreboardScreen`
+  makes each row of `ScoreTable` touchable (`onRoundPress`) to reopen that round
+  in `RoundScreen` for correction. This reuses the existing `goToRound`/
+  `updateEntry` actions (no dedicated store state) — `updateEntry` preserves
+  `validated: true` via spread, so edits apply immediately without
+  re-committing. `RoundScreen` derives `editMode` from `!!game.finishedAt` to
+  swap its header/footer copy and skip the commit flow, and `ScoreTable`
+  gates its "current round" highlight on `!game.finishedAt` so a round
+  reopened for editing isn't shown as if it were in progress.
 
 ## Conventions
 

@@ -1,12 +1,12 @@
 // Écran d'accueil Skull King : nouvelle partie, reprendre, ou voir le dernier tableau.
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BackButton from '../components/BackButton';
 import Button from '../components/Button';
 import ScreenHeader from '../components/ScreenHeader';
 import { useStore } from '../lib/store';
-import { colors, spacing } from '../theme';
+import { colors, radius, spacing } from '../theme';
 
 export default function HomeScreen() {
   const game = useStore((s) => s.game);
@@ -22,7 +22,11 @@ export default function HomeScreen() {
 
       <View style={styles.container}>
         <View style={styles.hero}>
-          <Text style={styles.gameEmoji}>☠️</Text>
+          <Image
+            source={require('../../assets/game/skull-king.png')}
+            style={styles.gameImage}
+            resizeMode="cover"
+          />
           <Text style={styles.title}>Skull King</Text>
           <Text style={styles.subtitle}>Compteur de points</Text>
         </View>
@@ -61,7 +65,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   hero: { alignItems: 'center', marginTop: spacing.xxl },
-  gameEmoji: { fontSize: 72 },
+  gameImage: { width: 190, height: 190, borderRadius: radius.lg },
   title: {
     color: colors.gold,
     fontSize: 40,

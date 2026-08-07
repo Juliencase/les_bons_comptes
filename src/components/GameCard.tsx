@@ -1,10 +1,12 @@
 // Carte de sélection d'un jeu — agnostique, pilotée par props.
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, ImageSourcePropType, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, opacity, radius, spacing } from '../theme';
 
 type Props = {
   emoji: string;
+  /** Illustration du jeu ; prioritaire sur `emoji` si fournie. */
+  image?: ImageSourcePropType;
   name: string;
   subtitle: string;
   available: boolean;
@@ -17,6 +19,7 @@ type Props = {
 
 export default function GameCard({
   emoji,
+  image,
   name,
   subtitle,
   available,
@@ -34,7 +37,11 @@ export default function GameCard({
         pressed && available && styles.pressed,
       ]}
     >
-      <Text style={styles.cardEmoji}>{emoji}</Text>
+      {image ? (
+        <Image source={image} style={styles.cardImage} resizeMode="cover" />
+      ) : (
+        <Text style={styles.cardEmoji}>{emoji}</Text>
+      )}
       <View style={styles.cardBody}>
         <Text style={[styles.cardName, !available && styles.cardNameDim]}>{name}</Text>
         <Text style={styles.cardSubtitle}>{subtitle}</Text>
@@ -66,6 +73,7 @@ const styles = StyleSheet.create({
   cardDisabled: { opacity: 0.55 }, // dim volontairement plus léger qu'un vrai « disabled » : le libellé « Bientôt » doit rester lisible.
   pressed: { opacity: opacity.pressed },
   cardEmoji: { fontSize: 34 },
+  cardImage: { width: 44, height: 44, borderRadius: radius.md },
   cardBody: { flex: 1 },
   cardName: { color: colors.text, fontSize: 19, fontWeight: '800' },
   cardNameDim: { color: colors.textDim },

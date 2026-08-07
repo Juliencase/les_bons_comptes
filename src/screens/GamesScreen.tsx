@@ -1,7 +1,7 @@
 // Écran de lancement « Les Bons Comptes » : choix du jeu à compter.
 // Extensible : ajouter une entrée dans GAMES suffit pour proposer un nouveau jeu.
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ImageSourcePropType, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import GameCard from '../components/GameCard';
 import { useStore } from '../lib/store';
@@ -12,6 +12,7 @@ type GameDef = {
   key: string;
   name: string;
   emoji: string;
+  image?: ImageSourcePropType;
   subtitle: string;
   available: boolean;
   screen?: Screen; // écran d'accueil du jeu (si disponible)
@@ -22,6 +23,7 @@ const GAMES: GameDef[] = [
     key: 'skull-king',
     name: 'Skull King',
     emoji: '☠️',
+    image: require('../../assets/game/skull-king.png'),
     subtitle: '2 à 8 joueurs · 10 manches',
     available: true,
     screen: 'home',
@@ -46,7 +48,7 @@ export default function GamesScreen() {
         <View style={styles.hero}>
           <Text style={styles.brandEmoji}>🎲</Text>
           <Text style={styles.title}>Les Bons Comptes</Text>
-          <Text style={styles.subtitle}>Le compteur qui ne se trompe jamais</Text>
+          <Text style={styles.subtitle}>« Font les bonnes parties »</Text>
         </View>
 
         <Text style={styles.sectionTitle}>Choisis un jeu</Text>
@@ -56,6 +58,7 @@ export default function GamesScreen() {
             <GameCard
               key={g.key}
               emoji={g.emoji}
+              image={g.image}
               name={g.name}
               subtitle={g.subtitle}
               available={g.available}
@@ -91,10 +94,11 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     color: colors.textDim,
-    fontSize: 15,
+    fontSize: 12,
     marginTop: spacing.xs,
     fontStyle: 'italic',
     textAlign: 'center',
+    opacity: 0.6,
   },
   sectionTitle: {
     color: colors.textDim,
