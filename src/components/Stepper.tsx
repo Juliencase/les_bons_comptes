@@ -40,19 +40,7 @@ export default function Stepper({
 
   return (
     <View style={styles.row}>
-      <Pressable
-        onPress={dec}
-        disabled={!canDec}
-        accessibilityRole="button"
-        accessibilityLabel={decrementLabel}
-        style={({ pressed }) => [
-          styles.btn,
-          { opacity: canDec ? (pressed ? opacity.pressedSubtle : 1) : opacity.disabled },
-        ]}
-        hitSlop={8}
-      >
-        <Text style={styles.btnText}>−</Text>
-      </Pressable>
+      <StepBtn symbol="−" label={decrementLabel} enabled={canDec} onPress={dec} />
 
       <View style={[styles.valueBox, { borderColor: accent }]}>
         <Text style={[styles.value, value == null && styles.placeholder]}>
@@ -60,20 +48,36 @@ export default function Stepper({
         </Text>
       </View>
 
-      <Pressable
-        onPress={inc}
-        disabled={!canInc}
-        accessibilityRole="button"
-        accessibilityLabel={incrementLabel}
-        style={({ pressed }) => [
-          styles.btn,
-          { opacity: canInc ? (pressed ? opacity.pressedSubtle : 1) : opacity.disabled },
-        ]}
-        hitSlop={8}
-      >
-        <Text style={styles.btnText}>+</Text>
-      </Pressable>
+      <StepBtn symbol="+" label={incrementLabel} enabled={canInc} onPress={inc} />
     </View>
+  );
+}
+
+function StepBtn({
+  symbol,
+  label,
+  enabled,
+  onPress,
+}: {
+  symbol: string;
+  label: string;
+  enabled: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!enabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [
+        styles.btn,
+        { opacity: enabled ? (pressed ? opacity.pressedSubtle : 1) : opacity.disabled },
+      ]}
+      hitSlop={8}
+    >
+      <Text style={styles.btnText}>{symbol}</Text>
+    </Pressable>
   );
 }
 

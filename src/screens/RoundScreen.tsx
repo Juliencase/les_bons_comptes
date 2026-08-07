@@ -14,7 +14,7 @@ import Button from '../components/Button';
 import IconButton from '../components/IconButton';
 import PlayerRoundRow from '../components/PlayerRoundRow';
 import ScreenHeader from '../components/ScreenHeader';
-import { colors, radius, spacing } from '../theme';
+import { colors, goldTint, radius, spacing } from '../theme';
 import {
   cardsForRound,
   cumulativeTotal,
@@ -36,6 +36,9 @@ export default function RoundScreen() {
   const round = game.currentRound;
   const cards = cardsForRound(round);
   const isLast = round >= game.totalRounds;
+  // Partie déjà terminée : on rouvre une manche passée pour corriger un score,
+  // les modifications s'appliquent immédiatement (la manche reste validée).
+  const editMode = !!game.finishedAt;
 
   const entries = game.players.map((p) => game.rounds[round]?.[p.id]);
   const allComplete = entries.every((e) => isEntryComplete(e));
@@ -51,8 +54,14 @@ export default function RoundScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScreenHeader
-          left={<IconButton icon="☰" label="Retour à l'accueil" onPress={() => setScreen('home')} />}
-          title={`Manche ${round}/${game.totalRounds}`}
+          left={
+            <IconButton
+              icon="☰"
+              label="Retour à l'accueil"
+              onPress={() => setScreen(editMode ? 'scoreboard' : 'home')}
+            />
+          }
+          title={editMode ? `Modifier la manche ${round}` : `Manche ${round}/${game.totalRounds}`}
           subtitle={`${cards} carte${cards > 1 ? 's' : ''}`}
           right={<IconButton icon="📊" label="Voir le tableau des scores" onPress={() => setScreen('scoreboard')} />}
           bordered
@@ -95,18 +104,24 @@ export default function RoundScreen() {
         </ScrollView>
 
         <View style={styles.footer}>
-          {round > 1 && (
-            <Button
-              variant="ghost"
-              label="‹ Manche précédente"
-              onPress={() => goToRound(round - 1)}
-            />
+          {editMode ? (
+            <Button label="Retour au tableau des scores" onPress={() => setScreen('scoreboard')} />
+          ) : (
+            <>
+              {round > 1 && (
+                <Button
+                  variant="ghost"
+                  label="‹ Manche précédente"
+                  onPress={() => goToRound(round - 1)}
+                />
+              )}
+              <Button
+                disabled={!allComplete}
+                label={isLast ? 'Terminer la partie' : 'Valider la manche ›'}
+                onPress={commitRound}
+              />
+            </>
           )}
-          <Button
-            disabled={!allComplete}
-            label={isLast ? 'Terminer la partie' : 'Valider la manche ›'}
-            onPress={commitRound}
-          />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -118,7 +133,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   list: { padding: spacing.lg },
   warning: {
-    backgroundColor: 'rgba(224,169,46,0.12)',
+    backgroundColor: goldTint.medium,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.gold,

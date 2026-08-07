@@ -1,11 +1,12 @@
 // Écran de lancement « Les Bons Comptes » : choix du jeu à compter.
 // Extensible : ajouter une entrée dans GAMES suffit pour proposer un nouveau jeu.
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import GameCard from '../components/GameCard';
 import { useStore } from '../lib/store';
 import { Screen } from '../lib/types';
-import { colors, opacity, radius, spacing } from '../theme';
+import { colors, spacing } from '../theme';
 
 type GameDef = {
   key: string;
@@ -52,39 +53,22 @@ export default function GamesScreen() {
 
         <View style={styles.list}>
           {GAMES.map((g) => (
-            <Pressable
+            <GameCard
               key={g.key}
-              disabled={!g.available}
+              emoji={g.emoji}
+              name={g.name}
+              subtitle={g.subtitle}
+              available={g.available}
+              badgeLabel={
+                !g.available
+                  ? 'Bientôt'
+                  : gameInProgress && g.key === 'skull-king'
+                    ? 'En cours'
+                    : undefined
+              }
+              badgeSoon={!g.available}
               onPress={() => g.screen && setScreen(g.screen)}
-              style={({ pressed }) => [
-                styles.card,
-                !g.available && styles.cardDisabled,
-                pressed && g.available && styles.pressed,
-              ]}
-            >
-              <Text style={styles.cardEmoji}>{g.emoji}</Text>
-              <View style={styles.cardBody}>
-                <Text
-                  style={[styles.cardName, !g.available && styles.cardNameDim]}
-                >
-                  {g.name}
-                </Text>
-                <Text style={styles.cardSubtitle}>{g.subtitle}</Text>
-              </View>
-              {g.available ? (
-                gameInProgress && g.key === 'skull-king' ? (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>En cours</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.chevron}>›</Text>
-                )
-              ) : (
-                <View style={[styles.badge, styles.badgeSoon]}>
-                  <Text style={styles.badgeSoonText}>Bientôt</Text>
-                </View>
-              )}
-            </Pressable>
+            />
           ))}
         </View>
       </ScrollView>
@@ -121,31 +105,4 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   list: { gap: spacing.md },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  cardDisabled: { opacity: 0.55 }, // dim volontairement plus léger qu'un vrai « disabled » : le libellé « Bientôt » doit rester lisible.
-  pressed: { opacity: opacity.pressed },
-  cardEmoji: { fontSize: 34 },
-  cardBody: { flex: 1 },
-  cardName: { color: colors.text, fontSize: 19, fontWeight: '800' },
-  cardNameDim: { color: colors.textDim },
-  cardSubtitle: { color: colors.textDim, fontSize: 13, marginTop: 2 },
-  chevron: { color: colors.gold, fontSize: 28, fontWeight: '700' },
-  badge: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.lg,
-    backgroundColor: colors.gold,
-  },
-  badgeText: { color: colors.bg, fontSize: 12, fontWeight: '800' },
-  badgeSoon: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.border },
-  badgeSoonText: { color: colors.textDim, fontSize: 12, fontWeight: '700' },
 });

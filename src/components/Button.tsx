@@ -3,7 +3,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { colors, opacity, radius, spacing } from '../theme';
 
-type Variant = 'primary' | 'secondary' | 'ghost';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'dashed';
 
 type Props = {
   label: string;
@@ -57,6 +57,15 @@ const variantStyles = {
   }),
   ghost: StyleSheet.create({
     container: { paddingVertical: spacing.md },
+    text: { color: colors.textDim, fontSize: 15, fontWeight: '600' },
+  }),
+  dashed: StyleSheet.create({
+    container: {
+      paddingVertical: spacing.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderStyle: 'dashed',
+    },
     text: { color: colors.textDim, fontSize: 15, fontWeight: '600' },
   }),
 };

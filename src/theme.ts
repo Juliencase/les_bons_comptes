@@ -30,6 +30,16 @@ export const radius = {
   lg: 16,
 };
 
+// Teintes translucides de l'or, utilisées pour mettre en évidence la manche
+// courante (fond de ligne, cellule, encadré d'avertissement) sans dupliquer
+// des rgba() en dur à plusieurs endroits.
+export const goldTint = {
+  subtle: 'rgba(224,169,46,0.08)',
+  medium: 'rgba(224,169,46,0.12)',
+  strong: 'rgba(224,169,46,0.15)',
+  border: 'rgba(224,169,46,0.3)',
+};
+
 // Opacités partagées pour les retours d'interaction (Pressable) — évite les
 // valeurs magiques dupliquées et garantit un feedback tactile cohérent partout.
 export const opacity = {

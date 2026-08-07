@@ -1,7 +1,7 @@
 // Tableau récapitulatif : lignes = manches, colonnes = joueurs, dernière ligne = total.
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { colors, radius, spacing } from '../theme';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { colors, goldTint, opacity, radius, spacing } from '../theme';
 import {
   cardsForRound,
   cumulativeTotals,
@@ -14,7 +14,13 @@ import { Game } from '../lib/types';
 const NAME_COL = 120;
 const CELL = 68;
 
-export default function ScoreTable({ game }: { game: Game }) {
+type Props = {
+  game: Game;
+  /** Si fourni, chaque ligne de manche devient touchable pour la corriger (ex. après la fin de la partie). */
+  onRoundPress?: (round: number) => void;
+};
+
+export default function ScoreTable({ game, onRoundPress }: Props) {
   const totals = cumulativeTotals(game);
   const rounds = Array.from({ length: game.totalRounds }, (_, i) => i + 1);
 
@@ -37,13 +43,26 @@ export default function ScoreTable({ game }: { game: Game }) {
 
         {/* Lignes des manches */}
         {rounds.map((r) => {
-          const isCurrent = r === game.currentRound;
+          // Le surlignage « manche en cours » n'a de sens que pendant une partie
+          // active : après la fin, currentRound ne fait que suivre la dernière
+          // manche ouverte pour correction, ce n'est plus « la » manche en cours.
+          const isCurrent = !game.finishedAt && r === game.currentRound;
           return (
-            <View key={r} style={[styles.row, isCurrent && styles.currentRow]}>
+            <Pressable
+              key={r}
+              disabled={!onRoundPress}
+              onPress={() => onRoundPress?.(r)}
+              style={({ pressed }) => [
+                styles.row,
+                isCurrent && styles.currentRow,
+                pressed && onRoundPress && styles.pressedRow,
+              ]}
+            >
               <View style={[styles.roundLabel, isCurrent && styles.currentRoundLabel]}>
                 <Text style={[styles.roundLabelText, isCurrent && styles.currentRoundLabelText]}>
                   {isCurrent && '▶ '}{r}
                   <Text style={styles.roundCards}>  ({cardsForRound(r)} c.)</Text>
+                  {onRoundPress && <Text style={styles.editHint}>  ✎</Text>}
                 </Text>
               </View>
               {game.players.map((p) => {
@@ -67,7 +86,7 @@ export default function ScoreTable({ game }: { game: Game }) {
                   </View>
                 );
               })}
-            </View>
+            </Pressable>
           );
         })}
 
@@ -89,7 +108,8 @@ export default function ScoreTable({ game }: { game: Game }) {
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row' },
-  currentRow: { backgroundColor: 'rgba(224,169,46,0.08)' },
+  currentRow: { backgroundColor: goldTint.subtle },
+  pressedRow: { opacity: opacity.pressedSubtle },
   corner: {
     width: NAME_COL,
     padding: spacing.sm,
@@ -117,10 +137,11 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     justifyContent: 'center',
   },
-  currentRoundLabel: { backgroundColor: 'rgba(224,169,46,0.15)', borderColor: colors.gold },
+  currentRoundLabel: { backgroundColor: goldTint.strong, borderColor: colors.gold },
   roundLabelText: { color: colors.text, fontWeight: '600' },
   currentRoundLabelText: { color: colors.gold, fontWeight: '700' },
   roundCards: { color: colors.textDim, fontWeight: '400', fontSize: 12 },
+  editHint: { color: colors.gold, fontWeight: '700', fontSize: 12 },
   cell: {
     width: CELL,
     paddingVertical: spacing.sm,
@@ -130,7 +151,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  currentCell: { backgroundColor: 'rgba(224,169,46,0.08)', borderColor: 'rgba(224,169,46,0.3)' },
+  currentCell: { backgroundColor: goldTint.subtle, borderColor: goldTint.border },
   cellText: { fontSize: 14, fontWeight: '600' },
   cellEmpty: { color: colors.textDim },
   positive: { color: colors.positive },

@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,11 +12,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BackButton from '../components/BackButton';
 import Button from '../components/Button';
+import IconButton from '../components/IconButton';
 import ScreenHeader from '../components/ScreenHeader';
 import { confirmOverwriteGame } from '../lib/confirm';
 import { useStore } from '../lib/store';
 import { MAX_PLAYERS, MIN_PLAYERS } from '../lib/types';
-import { colors, opacity, radius, spacing } from '../theme';
+import { colors, radius, spacing } from '../theme';
 
 export default function SetupScreen() {
   const game = useStore((s) => s.game);
@@ -82,26 +82,19 @@ export default function SetupScreen() {
                 returnKeyType="done"
               />
               {names.length > MIN_PLAYERS && (
-                <Pressable
+                <IconButton
+                  icon="✕"
+                  label={`Supprimer le joueur ${i + 1}`}
+                  tone="danger"
+                  circle
                   onPress={() => removePlayer(i)}
-                  hitSlop={8}
-                  style={styles.remove}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Supprimer le joueur ${i + 1}`}
-                >
-                  <Text style={styles.removeText}>✕</Text>
-                </Pressable>
+                />
               )}
             </View>
           ))}
 
           {names.length < MAX_PLAYERS && (
-            <Pressable
-              style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
-              onPress={addPlayer}
-            >
-              <Text style={styles.addText}>+ Ajouter un joueur</Text>
-            </Pressable>
+            <Button variant="dashed" label="+ Ajouter un joueur" onPress={addPlayer} />
           )}
         </ScrollView>
 
@@ -141,25 +134,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     fontSize: 16,
   },
-  remove: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.cardAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  removeText: { color: colors.negative, fontSize: 16, fontWeight: '700' },
-  addBtn: {
-    marginTop: spacing.sm,
-    paddingVertical: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-  },
-  addText: { color: colors.textDim, fontSize: 15, fontWeight: '600' },
   footer: {
     padding: spacing.lg,
     borderTopWidth: 1,
@@ -167,5 +141,4 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   hint: { color: colors.textDim, textAlign: 'center', fontSize: 13 },
-  pressed: { opacity: opacity.pressed },
 });
