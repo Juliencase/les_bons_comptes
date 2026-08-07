@@ -3,10 +3,11 @@
 import React from 'react';
 import { ImageSourcePropType, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import GameCard from '../components/GameCard';
 import { useStore } from '../lib/store';
 import { Screen } from '../lib/types';
-import { colors, spacing } from '../theme';
+import { colors, fonts, spacing } from '../theme';
 
 type GameDef = {
   key: string;
@@ -23,18 +24,15 @@ const GAMES: GameDef[] = [
     key: 'skull-king',
     name: 'Skull King',
     emoji: '☠️',
-    image: require('../../assets/game/skull-king.png'),
-    subtitle: '2 à 8 joueurs · 10 manches',
+    image: require('../../assets/game/skull_king.png'),
+    subtitle: '10 manches',
     available: true,
     screen: 'home',
   },
-  {
-    key: 'coming-soon',
-    name: "D'autres jeux arrivent",
-    emoji: '🎲',
-    subtitle: 'Bientôt dans Les Bons Comptes',
-    available: false,
-  },
+  { key: 'tarot', name: 'Tarot', emoji: '🃏', subtitle: '', available: false },
+  { key: 'belote', name: 'Belote', emoji: '♣️', subtitle: '', available: false },
+  { key: 'rami', name: 'Rami', emoji: '🁢', subtitle: '', available: false },
+  { key: 'yams', name: 'Yams', emoji: '🎲', subtitle: '', available: false },
 ];
 
 export default function GamesScreen() {
@@ -44,16 +42,20 @@ export default function GamesScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <LinearGradient
+        colors={[colors.bgAlt, colors.bg]}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.hero}>
-          <Text style={styles.brandEmoji}>🎲</Text>
-          <Text style={styles.title}>Les Bons Comptes</Text>
+          <Text style={styles.title}>LES BONS COMPTES</Text>
           <Text style={styles.subtitle}>« Font les bonnes parties »</Text>
         </View>
 
         <Text style={styles.sectionTitle}>Choisis un jeu</Text>
 
-        <View style={styles.list}>
+        <View style={styles.grid}>
           {GAMES.map((g) => (
             <GameCard
               key={g.key}
@@ -62,14 +64,7 @@ export default function GamesScreen() {
               name={g.name}
               subtitle={g.subtitle}
               available={g.available}
-              badgeLabel={
-                !g.available
-                  ? 'Bientôt'
-                  : gameInProgress && g.key === 'skull-king'
-                    ? 'En cours'
-                    : undefined
-              }
-              badgeSoon={!g.available}
+              badgeLabel={gameInProgress && g.key === 'skull-king' ? 'En cours' : undefined}
               onPress={() => g.screen && setScreen(g.screen)}
             />
           ))}
@@ -83,30 +78,28 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   container: { padding: spacing.xl, paddingBottom: spacing.xxl },
   hero: { alignItems: 'center', marginTop: spacing.xl, marginBottom: spacing.xxl },
-  brandEmoji: { fontSize: 60 },
   title: {
     color: colors.gold,
-    fontSize: 34,
-    fontWeight: '800',
-    marginTop: spacing.md,
+    fontFamily: fonts.display,
+    fontSize: 24,
     letterSpacing: 0.5,
     textAlign: 'center',
   },
   subtitle: {
     color: colors.textDim,
-    fontSize: 12,
+    fontSize: 11,
     marginTop: spacing.xs,
     fontStyle: 'italic',
     textAlign: 'center',
-    opacity: 0.6,
+    opacity: 0.65,
   },
   sectionTitle: {
     color: colors.textDim,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: 1,
     marginBottom: spacing.md,
   },
-  list: { gap: spacing.md },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
 });

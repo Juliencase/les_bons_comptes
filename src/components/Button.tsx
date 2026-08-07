@@ -1,7 +1,8 @@
 // Bouton d'action générique (3 variantes visuelles) — agnostique, piloté par props.
 import React from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
-import { colors, opacity, radius, spacing } from '../theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors, goldGradient, opacity, radius, spacing } from '../theme';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'dashed';
 
@@ -13,6 +14,25 @@ type Props = {
 };
 
 export default function Button({ label, onPress, disabled, variant = 'primary' }: Props) {
+  const content = (
+    <Text style={[styles.text, variantStyles[variant].text]}>{label}</Text>
+  );
+
+  if (variant === 'primary' && !disabled) {
+    return (
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: false }}
+        style={({ pressed }) => pressed && styles.pressed}
+      >
+        <LinearGradient colors={goldGradient} style={styles.base}>
+          {content}
+        </LinearGradient>
+      </Pressable>
+    );
+  }
+
   return (
     <Pressable
       onPress={onPress}
@@ -26,7 +46,7 @@ export default function Button({ label, onPress, disabled, variant = 'primary' }
         pressed && !disabled && styles.pressed,
       ]}
     >
-      <Text style={[styles.text, variantStyles[variant].text]}>{label}</Text>
+      {content}
     </Pressable>
   );
 }

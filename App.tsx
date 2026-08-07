@@ -2,6 +2,12 @@ import React from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import {
+  useFonts,
+  Cinzel_600SemiBold,
+  Cinzel_700Bold,
+  Cinzel_800ExtraBold,
+} from '@expo-google-fonts/cinzel';
 import { useStore } from './src/lib/store';
 import GamesScreen from './src/screens/GamesScreen';
 import HomeScreen from './src/screens/HomeScreen';
@@ -13,11 +19,16 @@ import { colors } from './src/theme';
 export default function App() {
   const screen = useStore((s) => s.screen);
   const hydrated = useStore((s) => s.hydrated);
+  const [fontsLoaded] = useFonts({
+    Cinzel_600SemiBold,
+    Cinzel_700Bold,
+    Cinzel_800ExtraBold,
+  });
 
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
-      {!hydrated ? (
+      {!hydrated || !fontsLoaded ? (
         <View style={styles.loading}>
           <ActivityIndicator color={colors.gold} size="large" />
         </View>

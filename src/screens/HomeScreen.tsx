@@ -1,12 +1,20 @@
 // Écran d'accueil Skull King : nouvelle partie, reprendre, ou voir le dernier tableau.
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Image, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BackButton from '../components/BackButton';
 import Button from '../components/Button';
 import ScreenHeader from '../components/ScreenHeader';
 import { useStore } from '../lib/store';
-import { colors, radius, spacing } from '../theme';
+import { colors, fonts, spacing } from '../theme';
+
+// Dimensions du logo Skull King (assets/game/skull_king.png) : 1567x1186 px.
+// On force des dimensions numériques (pas de %/aspectRatio) car <Image>
+// retombe sur sa taille intrinsèque si le style ne lui donne pas des
+// width/height résolus en pixels.
+const LOGO_RATIO = 1186 / 1567;
+const IMAGE_WIDTH = Math.min(Dimensions.get('window').width - spacing.xl * 2, 260);
+const IMAGE_HEIGHT = Math.round(IMAGE_WIDTH * LOGO_RATIO);
 
 export default function HomeScreen() {
   const game = useStore((s) => s.game);
@@ -23,9 +31,9 @@ export default function HomeScreen() {
       <View style={styles.container}>
         <View style={styles.hero}>
           <Image
-            source={require('../../assets/game/skull-king.png')}
+            source={require('../../assets/game/skull_king.png')}
             style={styles.gameImage}
-            resizeMode="cover"
+            resizeMode="contain"
           />
           <Text style={styles.title}>Skull King</Text>
           <Text style={styles.subtitle}>Compteur de points</Text>
@@ -65,13 +73,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   hero: { alignItems: 'center', marginTop: spacing.xxl },
-  gameImage: { width: 190, height: 190, borderRadius: radius.lg },
+  gameImage: {
+    width: IMAGE_WIDTH,
+    height: IMAGE_HEIGHT,
+    maxWidth: IMAGE_WIDTH,
+    maxHeight: IMAGE_HEIGHT,
+  },
   title: {
     color: colors.gold,
-    fontSize: 40,
-    fontWeight: '800',
-    marginTop: spacing.md,
-    letterSpacing: 1,
+    fontFamily: fonts.display,
+    fontSize: 30,
+    marginTop: spacing.lg,
+    letterSpacing: 0.5,
     textAlign: 'center',
   },
   subtitle: {

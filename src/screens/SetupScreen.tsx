@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import BackButton from '../components/BackButton';
 import Button from '../components/Button';
 import IconButton from '../components/IconButton';
@@ -17,7 +18,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import { confirmOverwriteGame } from '../lib/confirm';
 import { useStore } from '../lib/store';
 import { MAX_PLAYERS, MIN_PLAYERS } from '../lib/types';
-import { colors, radius, spacing } from '../theme';
+import { colors, goldGradient, radius, spacing } from '../theme';
 
 export default function SetupScreen() {
   const game = useStore((s) => s.game);
@@ -71,7 +72,9 @@ export default function SetupScreen() {
         >
           {names.map((name, i) => (
             <View key={i} style={styles.rowItem}>
-              <Text style={styles.index}>{i + 1}</Text>
+              <LinearGradient colors={goldGradient} style={styles.avatar}>
+                <Text style={styles.index}>{i + 1}</Text>
+              </LinearGradient>
               <TextInput
                 style={styles.input}
                 value={name}
@@ -116,12 +119,17 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   list: { padding: spacing.lg, gap: spacing.md },
   rowItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  avatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   index: {
-    color: colors.gold,
+    color: colors.bg,
     fontWeight: '800',
-    fontSize: 16,
-    width: 22,
-    textAlign: 'center',
+    fontSize: 13,
   },
   input: {
     flex: 1,

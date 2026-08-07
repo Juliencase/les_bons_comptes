@@ -9,12 +9,13 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useStore } from '../lib/store';
 import Button from '../components/Button';
 import IconButton from '../components/IconButton';
 import PlayerRoundRow from '../components/PlayerRoundRow';
 import ScreenHeader from '../components/ScreenHeader';
-import { colors, goldTint, radius, spacing } from '../theme';
+import { colors, goldGradient, goldTint, radius, spacing } from '../theme';
 import {
   cardsForRound,
   cumulativeTotal,
@@ -66,6 +67,15 @@ export default function RoundScreen() {
           right={<IconButton icon="📊" label="Voir le tableau des scores" onPress={() => setScreen('scoreboard')} />}
           bordered
         />
+
+        <View style={styles.progressTrack}>
+          <LinearGradient
+            colors={goldGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[styles.progressFill, { width: `${(round / game.totalRounds) * 100}%` }]}
+          />
+        </View>
 
         <ScrollView
           contentContainerStyle={styles.list}
@@ -131,6 +141,8 @@ export default function RoundScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
+  progressTrack: { height: 4, backgroundColor: colors.bgAlt },
+  progressFill: { height: '100%' },
   list: { padding: spacing.lg },
   warning: {
     backgroundColor: goldTint.medium,

@@ -6,13 +6,22 @@ export const colors = {
   cardAlt: '#234a58',
   border: '#2d5a6b',
   gold: '#e0a92e',
-  goldSoft: '#f0cd7a',
+  goldSoft: '#f4d488',
   text: '#f4efe6',
   textDim: '#a9c0c9',
   positive: '#5fd08a',
   negative: '#ef6f6f',
   danger: '#c0453f',
   white: '#ffffff',
+};
+
+/** Dégradé or utilisé pour les boutons pleins, badges et titres accentués. */
+export const goldGradient = [colors.goldSoft, colors.gold, '#946c1e'] as const;
+
+export const fonts = {
+  display: 'Cinzel_800ExtraBold',
+  displaySemiBold: 'Cinzel_600SemiBold',
+  displayBold: 'Cinzel_700Bold',
 };
 
 export const spacing = {
