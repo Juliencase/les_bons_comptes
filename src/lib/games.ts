@@ -41,4 +41,15 @@ export const GAMES: GameDef[] = [
     available: true,
     screen: 'home',
   },
+  {
+    key: 'belote',
+    name: 'Belote',
+    emoji: '🃏',
+    image: require('../../assets/game/belote.png'),
+    duration: 45,
+    minPlayers: 4,
+    maxPlayers: 4,
+    available: true,
+    screen: 'belote-home',
+  },
 ];

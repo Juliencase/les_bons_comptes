@@ -14,6 +14,10 @@ import HomeScreen from './src/screens/HomeScreen';
 import SetupScreen from './src/screens/SetupScreen';
 import RoundScreen from './src/screens/RoundScreen';
 import ScoreboardScreen from './src/screens/ScoreboardScreen';
+import BeloteHomeScreen from './src/screens/BeloteHomeScreen';
+import BeloteSetupScreen from './src/screens/BeloteSetupScreen';
+import BeloteRoundScreen from './src/screens/BeloteRoundScreen';
+import BeloteScoreboardScreen from './src/screens/BeloteScoreboardScreen';
 import { colors } from './src/theme';
 
 export default function App() {
@@ -40,6 +44,14 @@ export default function App() {
         <RoundScreen />
       ) : screen === 'scoreboard' ? (
         <ScoreboardScreen />
+      ) : screen === 'belote-home' ? (
+        <BeloteHomeScreen />
+      ) : screen === 'belote-setup' ? (
+        <BeloteSetupScreen />
+      ) : screen === 'belote-round' ? (
+        <BeloteRoundScreen />
+      ) : screen === 'belote-scoreboard' ? (
+        <BeloteScoreboardScreen />
       ) : (
         <GamesScreen />
       )}

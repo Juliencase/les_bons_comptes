@@ -13,16 +13,25 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import BackButton from '../components/BackButton';
 import Button from '../components/Button';
+import ChipPicker from '../components/ChipPicker';
 import IconButton from '../components/IconButton';
 import ScreenHeader from '../components/ScreenHeader';
+import SectionTitle from '../components/SectionTitle';
 import { confirmOverwriteGame } from '../lib/confirm';
+import { DEFAULT_FORMAT_KEY, FORMATS, getFormat } from '../lib/formats';
 import { getGame, playerRange } from '../lib/games';
+import { finalizePlayerNames } from '../lib/names';
 import { useStore } from '../lib/store';
 import { colors, goldGradient, radius, spacing } from '../theme';
 
 // Seul Skull King est implémenté pour l'instant — cf. CLAUDE.md.
 const activeGame = getGame('skull-king');
 const { minPlayers: MIN_PLAYERS, maxPlayers: MAX_PLAYERS } = activeGame;
+const FORMAT_OPTIONS = FORMATS.map((f) => ({
+  key: f.key,
+  label: f.name,
+  sublabel: `${f.cardsPerRound.length} manche${f.cardsPerRound.length > 1 ? 's' : ''}`,
+}));
 
 export default function SetupScreen() {
   const game = useStore((s) => s.game);
@@ -31,6 +40,7 @@ export default function SetupScreen() {
   const hasUnfinishedGame = !!game && !game.finishedAt;
 
   const [names, setNames] = useState<string[]>(() => Array(MIN_PLAYERS).fill(''));
+  const [formatKey, setFormatKey] = useState(DEFAULT_FORMAT_KEY);
 
   const setName = (i: number, v: string) =>
     setNames((prev) => prev.map((n, idx) => (idx === i ? v : n)));
@@ -49,14 +59,15 @@ export default function SetupScreen() {
   const filled = trimmed.filter((n) => n.length > 0);
   const canStart = filled.length >= MIN_PLAYERS;
 
+  const format = getFormat(formatKey);
+
   const start = () => {
-    // Complète les noms vides par un libellé par défaut, en gardant l'ordre.
-    const finalNames = trimmed.map((n, i) => (n.length > 0 ? n : `Joueur ${i + 1}`));
+    const finalNames = finalizePlayerNames(names, 'Joueur');
     if (hasUnfinishedGame) {
-      confirmOverwriteGame(() => startGame(activeGame.key, finalNames));
+      confirmOverwriteGame(() => startGame(activeGame.key, finalNames, format.cardsPerRound));
       return;
     }
-    startGame(activeGame.key, finalNames);
+    startGame(activeGame.key, finalNames, format.cardsPerRound);
   };
 
   return (
@@ -72,6 +83,19 @@ export default function SetupScreen() {
             activeGame.duration ? ` · ~${activeGame.duration} min` : ''
           }`}
         />
+
+        <View style={styles.formatSection}>
+          <SectionTitle>Format de partie</SectionTitle>
+          <ChipPicker
+            options={FORMAT_OPTIONS}
+            selectedKey={formatKey}
+            onSelect={setFormatKey}
+          />
+          <Text style={styles.formatDescription}>{format.description}</Text>
+          <Text style={styles.formatCards}>
+            Cartes par manche : {format.cardsPerRound.join(', ')}
+          </Text>
+        </View>
 
         <ScrollView
           contentContainerStyle={styles.list}
@@ -111,7 +135,7 @@ export default function SetupScreen() {
         <View style={styles.footer}>
           <Text style={styles.hint}>
             {canStart
-              ? `${filled.length} joueur${filled.length > 1 ? 's' : ''} · 10 manches`
+              ? `${filled.length} joueur${filled.length > 1 ? 's' : ''} · ${format.cardsPerRound.length} manche${format.cardsPerRound.length > 1 ? 's' : ''}`
               : `Au moins ${MIN_PLAYERS} joueurs`}
           </Text>
           <Button label="Commencer la partie" disabled={!canStart} onPress={start} />
@@ -124,6 +148,18 @@ export default function SetupScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
+  formatSection: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+  formatDescription: {
+    color: colors.textDim,
+    fontSize: 12,
+    marginTop: spacing.sm,
+  },
+  formatCards: {
+    color: colors.gold,
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: spacing.xs,
+  },
   list: { padding: spacing.lg, gap: spacing.md },
   rowItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   avatar: {

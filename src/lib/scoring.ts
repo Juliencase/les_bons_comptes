@@ -3,11 +3,11 @@
 import { Game, RoundEntry } from './types';
 
 /**
- * Nombre de cartes distribuées à une manche.
- * Format standard v1 : manche N = N cartes.
- * (Fonction dédiée pour faciliter les formats personnalisés plus tard.)
+ * Nombre de cartes distribuées à une manche donnée, selon le format de la partie
+ * (cf. Game.cardsPerRound et lib/formats.ts).
  */
-export const cardsForRound = (round: number): number => round;
+export const cardsForRound = (cardsPerRound: number[], round: number): number =>
+  cardsPerRound[round - 1] ?? 0;
 
 /**
  * Points de mise (hors bonus) pour un joueur sur une manche.
@@ -40,10 +40,10 @@ export function roundTotal(entry: RoundEntry | undefined, cards: number): number
 /** Total cumulé d'un joueur sur toutes les manches validées. */
 export function cumulativeTotal(game: Game, playerId: string): number {
   let sum = 0;
-  for (let r = 1; r <= game.totalRounds; r++) {
+  for (let r = 1; r <= game.cardsPerRound.length; r++) {
     const entry = game.rounds[r]?.[playerId];
     if (entry?.validated && isEntryComplete(entry)) {
-      sum += roundTotal(entry, cardsForRound(r));
+      sum += roundTotal(entry, cardsForRound(game.cardsPerRound, r));
     }
   }
   return sum;

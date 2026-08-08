@@ -12,7 +12,13 @@ import { colors, fonts, spacing } from '../theme';
 export default function GamesScreen() {
   const setScreen = useStore((s) => s.setScreen);
   const game = useStore((s) => s.game);
-  const gameInProgress = !!game && !game.finishedAt;
+  const beloteGame = useStore((s) => s.beloteGame);
+  const inProgressKeys = new Set(
+    [
+      game && !game.finishedAt ? game.gameKey : null,
+      beloteGame && !beloteGame.finishedAt ? beloteGame.gameKey : null,
+    ].filter((k): k is string => k != null),
+  );
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -39,7 +45,7 @@ export default function GamesScreen() {
               minPlayers={g.minPlayers}
               maxPlayers={g.maxPlayers}
               available={g.available}
-              badgeLabel={gameInProgress && game!.gameKey === g.key ? 'En cours' : undefined}
+              badgeLabel={inProgressKeys.has(g.key) ? 'En cours' : undefined}
               onPress={() => g.screen && setScreen(g.screen)}
             />
           ))}

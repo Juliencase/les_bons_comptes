@@ -35,8 +35,9 @@ export default function RoundScreen() {
   if (!game) return null;
 
   const round = game.currentRound;
-  const cards = cardsForRound(round);
-  const isLast = round >= game.totalRounds;
+  const cards = cardsForRound(game.cardsPerRound, round);
+  const totalRounds = game.cardsPerRound.length;
+  const isLast = round >= totalRounds;
   // Partie déjà terminée : on rouvre une manche passée pour corriger un score,
   // les modifications s'appliquent immédiatement (la manche reste validée).
   const editMode = !!game.finishedAt;
@@ -62,7 +63,7 @@ export default function RoundScreen() {
               onPress={() => setScreen(editMode ? 'scoreboard' : 'home')}
             />
           }
-          title={editMode ? `Modifier la manche ${round}` : `Manche ${round}/${game.totalRounds}`}
+          title={editMode ? `Modifier la manche ${round}` : `Manche ${round}/${totalRounds}`}
           subtitle={`${cards} carte${cards > 1 ? 's' : ''}`}
           right={<IconButton icon="📊" label="Voir le tableau des scores" onPress={() => setScreen('scoreboard')} />}
           bordered
@@ -73,7 +74,7 @@ export default function RoundScreen() {
             colors={goldGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            style={[styles.progressFill, { width: `${(round / game.totalRounds) * 100}%` }]}
+            style={[styles.progressFill, { width: `${(round / totalRounds) * 100}%` }]}
           />
         </View>
 

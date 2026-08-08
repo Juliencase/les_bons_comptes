@@ -12,10 +12,15 @@ import {
 import { Game, RoundEntry } from './types';
 
 describe('cardsForRound', () => {
-  it('manche N distribue N cartes (format standard)', () => {
-    expect(cardsForRound(1)).toBe(1);
-    expect(cardsForRound(7)).toBe(7);
-    expect(cardsForRound(10)).toBe(10);
+  it('lit le nombre de cartes de la manche dans le format de la partie', () => {
+    const standard = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    expect(cardsForRound(standard, 1)).toBe(1);
+    expect(cardsForRound(standard, 7)).toBe(7);
+    expect(cardsForRound(standard, 10)).toBe(10);
+  });
+
+  it("suit le format personnalisé plutôt que le n° de manche", () => {
+    expect(cardsForRound([6, 7, 8, 9, 10], 1)).toBe(6);
   });
 });
 
@@ -80,7 +85,7 @@ function makeGame(overrides?: Partial<Game>): Game {
       { id: 'p2', name: 'Bob' },
       { id: 'p3', name: 'Chloé' },
     ],
-    totalRounds: 3,
+    cardsPerRound: [1, 2, 3],
     currentRound: 1,
     rounds: {},
     createdAt: 0,
@@ -116,7 +121,7 @@ describe('cumulativeTotal / cumulativeTotals', () => {
 describe('ranking', () => {
   it('classe par total décroissant', () => {
     const game = makeGame({
-      totalRounds: 1,
+      cardsPerRound: [1],
       rounds: {
         1: {
           p1: { bid: 1, tricks: 1, bonus: 0, validated: true }, // 20
@@ -133,7 +138,7 @@ describe('ranking', () => {
 
   it('gère les ex æquo (même rang, pas de saut trompeur)', () => {
     const game = makeGame({
-      totalRounds: 1,
+      cardsPerRound: [1],
       rounds: {
         1: {
           p1: { bid: 1, tricks: 1, bonus: 0, validated: true }, // 20

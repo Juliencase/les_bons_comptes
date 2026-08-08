@@ -1,6 +1,15 @@
 // Types du domaine Skull King (v1 : système classique, format standard)
 
-export type Screen = 'games' | 'home' | 'setup' | 'round' | 'scoreboard';
+export type Screen =
+  | 'games'
+  | 'home'
+  | 'setup'
+  | 'round'
+  | 'scoreboard'
+  | 'belote-home'
+  | 'belote-setup'
+  | 'belote-round'
+  | 'belote-scoreboard';
 
 export type Player = {
   id: string;
@@ -19,12 +28,12 @@ export type Game = {
   id: string;
   gameKey: string; // clé du jeu compté (cf. GameDef.key dans lib/games.ts)
   players: Player[];
-  totalRounds: number; // 10 en v1
-  currentRound: number; // 1..totalRounds
+  // Cartes distribuées à chaque manche (cf. FormatDef dans lib/formats.ts) ;
+  // le nombre de manches = cardsPerRound.length.
+  cardsPerRound: number[];
+  currentRound: number; // 1..cardsPerRound.length
   // rounds[roundNumber][playerId] = RoundEntry
   rounds: Record<number, Record<string, RoundEntry>>;
   createdAt: number;
   finishedAt?: number;
 };
-
-export const DEFAULT_TOTAL_ROUNDS = 10;
