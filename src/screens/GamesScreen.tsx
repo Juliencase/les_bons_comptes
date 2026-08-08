@@ -1,39 +1,13 @@
 // Écran de lancement « Les Bons Comptes » : choix du jeu à compter.
-// Extensible : ajouter une entrée dans GAMES suffit pour proposer un nouveau jeu.
+// Le catalogue des jeux vit dans src/lib/games.ts.
 import React from 'react';
-import { ImageSourcePropType, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import GameCard from '../components/GameCard';
+import { GAMES } from '../lib/games';
 import { useStore } from '../lib/store';
-import { Screen } from '../lib/types';
 import { colors, fonts, spacing } from '../theme';
-
-type GameDef = {
-  key: string;
-  name: string;
-  emoji: string;
-  image?: ImageSourcePropType;
-  subtitle: string;
-  available: boolean;
-  screen?: Screen; // écran d'accueil du jeu (si disponible)
-};
-
-const GAMES: GameDef[] = [
-  {
-    key: 'skull-king',
-    name: 'Skull King',
-    emoji: '☠️',
-    image: require('../../assets/game/skull_king.png'),
-    subtitle: '10 manches',
-    available: true,
-    screen: 'home',
-  },
-  { key: 'tarot', name: 'Tarot', emoji: '🃏', subtitle: '', available: false },
-  { key: 'belote', name: 'Belote', emoji: '♣️', subtitle: '', available: false },
-  { key: 'rami', name: 'Rami', emoji: '🁢', subtitle: '', available: false },
-  { key: 'yams', name: 'Yams', emoji: '🎲', subtitle: '', available: false },
-];
 
 export default function GamesScreen() {
   const setScreen = useStore((s) => s.setScreen);
@@ -62,9 +36,10 @@ export default function GamesScreen() {
               emoji={g.emoji}
               image={g.image}
               name={g.name}
-              subtitle={g.subtitle}
+              minPlayers={g.minPlayers}
+              maxPlayers={g.maxPlayers}
               available={g.available}
-              badgeLabel={gameInProgress && g.key === 'skull-king' ? 'En cours' : undefined}
+              badgeLabel={gameInProgress && game!.gameKey === g.key ? 'En cours' : undefined}
               onPress={() => g.screen && setScreen(g.screen)}
             />
           ))}

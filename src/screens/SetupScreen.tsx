@@ -1,4 +1,4 @@
-// Écran de configuration : saisie des joueurs (2 à 8).
+// Écran de configuration : saisie des joueurs (bornes définies par le jeu actif).
 import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -16,9 +16,13 @@ import Button from '../components/Button';
 import IconButton from '../components/IconButton';
 import ScreenHeader from '../components/ScreenHeader';
 import { confirmOverwriteGame } from '../lib/confirm';
+import { getGame, playerRange } from '../lib/games';
 import { useStore } from '../lib/store';
-import { MAX_PLAYERS, MIN_PLAYERS } from '../lib/types';
 import { colors, goldGradient, radius, spacing } from '../theme';
+
+// Seul Skull King est implémenté pour l'instant — cf. CLAUDE.md.
+const activeGame = getGame('skull-king');
+const { minPlayers: MIN_PLAYERS, maxPlayers: MAX_PLAYERS } = activeGame;
 
 export default function SetupScreen() {
   const game = useStore((s) => s.game);
@@ -26,7 +30,7 @@ export default function SetupScreen() {
   const startGame = useStore((s) => s.startGame);
   const hasUnfinishedGame = !!game && !game.finishedAt;
 
-  const [names, setNames] = useState<string[]>(['', '']);
+  const [names, setNames] = useState<string[]>(() => Array(MIN_PLAYERS).fill(''));
 
   const setName = (i: number, v: string) =>
     setNames((prev) => prev.map((n, idx) => (idx === i ? v : n)));
@@ -49,10 +53,10 @@ export default function SetupScreen() {
     // Complète les noms vides par un libellé par défaut, en gardant l'ordre.
     const finalNames = trimmed.map((n, i) => (n.length > 0 ? n : `Joueur ${i + 1}`));
     if (hasUnfinishedGame) {
-      confirmOverwriteGame(() => startGame(finalNames));
+      confirmOverwriteGame(() => startGame(activeGame.key, finalNames));
       return;
     }
-    startGame(finalNames);
+    startGame(activeGame.key, finalNames);
   };
 
   return (
@@ -64,6 +68,9 @@ export default function SetupScreen() {
         <ScreenHeader
           left={<BackButton label="Retour" onPress={() => setScreen('home')} />}
           title="Les joueurs"
+          subtitle={`${playerRange(activeGame)} joueurs${
+            activeGame.duration ? ` · ~${activeGame.duration} min` : ''
+          }`}
         />
 
         <ScrollView

@@ -74,6 +74,7 @@ describe('roundTotal', () => {
 function makeGame(overrides?: Partial<Game>): Game {
   return {
     id: 'g1',
+    gameKey: 'skull-king',
     players: [
       { id: 'p1', name: 'Alice' },
       { id: 'p2', name: 'Bob' },

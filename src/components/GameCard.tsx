@@ -1,32 +1,25 @@
 // Tuile de sélection d'un jeu (grille 2 colonnes) — agnostique, pilotée par props.
 import React from 'react';
 import {
-  Dimensions,
   Image,
   ImageSourcePropType,
   Pressable,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { playerRange } from '../lib/games';
 import { colors, goldGradient, opacity, radius, spacing } from '../theme';
-
-// Grille 2 colonnes avec padding xl (écran) + gap md (entre tuiles) —
-// cf. GamesScreen. On calcule la taille de tuile en pixels pour dimensionner
-// l'image en dur : <Image> retombe sur sa taille intrinsèque si son cadre
-// n'est pas résolu en pixels (% + aspectRatio sur une Image ne suffit pas).
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const TILE_SIZE = (SCREEN_WIDTH - spacing.xl * 2 - spacing.md) / 2;
-const IMAGE_FRAME_WIDTH = TILE_SIZE * 0.76;
-const IMAGE_FRAME_HEIGHT = TILE_SIZE * 0.58;
 
 type Props = {
   emoji: string;
   /** Illustration du jeu ; prioritaire sur `emoji` si fournie. */
   image?: ImageSourcePropType;
   name: string;
-  subtitle: string;
+  minPlayers: number;
+  maxPlayers: number;
   available: boolean;
   /** Libellé du badge (ex. « En cours »). Affiché seulement si `available`. */
   badgeLabel?: string;
@@ -37,14 +30,28 @@ export default function GameCard({
   emoji,
   image,
   name,
-  subtitle,
+  minPlayers,
+  maxPlayers,
   available,
   badgeLabel,
   onPress,
 }: Props) {
+  // Grille 2 colonnes avec padding xl (écran) + gap md (entre tuiles) —
+  // cf. GamesScreen. On calcule la taille de tuile en pixels pour dimensionner
+  // l'image en dur : <Image> retombe sur sa taille intrinsèque si son cadre
+  // n'est pas résolu en pixels (% + aspectRatio sur une Image ne suffit pas).
+  // useWindowDimensions (plutôt que Dimensions.get au chargement du module)
+  // pour rester correct après rotation/redimensionnement.
+  const { width: screenWidth } = useWindowDimensions();
+  const tileSize = (screenWidth - spacing.xl * 2 - spacing.md) / 2;
+  const imageFrameWidth = tileSize * 0.76;
+  const imageFrameHeight = tileSize * 0.58;
+
+  const tileSizeStyle = { width: tileSize, height: tileSize };
+
   if (!available) {
     return (
-      <View style={styles.tile}>
+      <View style={[styles.tile, tileSizeStyle]}>
         <View style={styles.placeholder}>
           <Text style={styles.placeholderEmoji}>{emoji}</Text>
           <Text style={styles.placeholderName} numberOfLines={2}>
@@ -59,11 +66,23 @@ export default function GameCard({
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.tile, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.tile, tileSizeStyle, pressed && styles.pressed]}
       accessibilityRole="button"
     >
       {image && (
-        <Image source={image} style={styles.image} resizeMode="contain" />
+        <Image
+          source={image}
+          style={[
+            styles.image,
+            {
+              top: tileSize * 0.12,
+              left: tileSize * 0.12,
+              width: imageFrameWidth,
+              height: imageFrameHeight,
+            },
+          ]}
+          resizeMode="contain"
+        />
       )}
       <LinearGradient
         colors={['transparent', 'rgba(15,32,39,0.95)']}
@@ -79,8 +98,8 @@ export default function GameCard({
         <Text style={styles.name} numberOfLines={1}>
           {name}
         </Text>
-        <Text style={styles.subtitle} numberOfLines={1}>
-          {subtitle}
+        <Text style={styles.players} numberOfLines={1}>
+          {playerRange({ minPlayers, maxPlayers })} joueurs
         </Text>
       </View>
     </Pressable>
@@ -89,20 +108,12 @@ export default function GameCard({
 
 const styles = StyleSheet.create({
   tile: {
-    width: '48%',
-    aspectRatio: 1,
     borderRadius: radius.lg,
     overflow: 'hidden',
     backgroundColor: colors.bgAlt,
   },
   image: {
     position: 'absolute',
-    top: TILE_SIZE * 0.12,
-    left: TILE_SIZE * 0.12,
-    width: IMAGE_FRAME_WIDTH,
-    height: IMAGE_FRAME_HEIGHT,
-    maxWidth: IMAGE_FRAME_WIDTH,
-    maxHeight: IMAGE_FRAME_HEIGHT,
   },
   pressed: { opacity: opacity.pressed },
   placeholder: {
@@ -141,5 +152,5 @@ const styles = StyleSheet.create({
     bottom: 10,
   },
   name: { color: colors.text, fontSize: 15, fontWeight: '800' },
-  subtitle: { color: colors.gold, fontSize: 10, fontWeight: '700', marginTop: 2 },
+  players: { color: colors.gold, fontSize: 10, fontWeight: '700', marginTop: 2 },
 });

@@ -17,6 +17,7 @@ export type RoundEntry = {
 
 export type Game = {
   id: string;
+  gameKey: string; // clé du jeu compté (cf. GameDef.key dans lib/games.ts)
   players: Player[];
   totalRounds: number; // 10 en v1
   currentRound: number; // 1..totalRounds
@@ -26,6 +27,4 @@ export type Game = {
   finishedAt?: number;
 };
 
-export const MIN_PLAYERS = 2;
-export const MAX_PLAYERS = 8;
 export const DEFAULT_TOTAL_ROUNDS = 10;

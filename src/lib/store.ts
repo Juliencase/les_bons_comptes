@@ -48,7 +48,7 @@ function initRoundToZero(game: Game, round: number): Game {
   return { ...game, rounds: { ...game.rounds, [round]: next } };
 }
 
-function createGame(names: string[]): Game {
+function createGame(gameKey: string, names: string[]): Game {
   const players: Player[] = names.map((name) => ({
     id: makeId('p'),
     name: name.trim(),
@@ -63,6 +63,7 @@ function createGame(names: string[]): Game {
   }
   return {
     id: makeId('g'),
+    gameKey,
     players,
     totalRounds: DEFAULT_TOTAL_ROUNDS,
     currentRound: 1,
@@ -82,7 +83,7 @@ type State = {
 type Actions = {
   markHydrated: () => void;
   setScreen: (s: Screen) => void;
-  startGame: (names: string[]) => void;
+  startGame: (gameKey: string, names: string[]) => void;
   resumeGame: () => void;
   abandonGame: () => void;
   setBid: (round: number, playerId: string, value: number) => void;
@@ -103,8 +104,8 @@ export const useStore = create<State & Actions>()(
 
       setScreen: (screen) => set({ screen }),
 
-      startGame: (names) => {
-        set({ game: createGame(names), screen: 'round' });
+      startGame: (gameKey, names) => {
+        set({ game: createGame(gameKey, names), screen: 'round' });
       },
 
       resumeGame: () => {
