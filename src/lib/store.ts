@@ -2,7 +2,8 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Game, Player, RoundEntry, Screen } from './types';
+import { BidKind, Game, GameSetup, Player, RoundEntry, Screen } from './types';
+import { DEFAULT_BID_KIND } from './scoring';
 import { BeloteGame, BeloteHandEntry, BeloteTeam } from './belote/types';
 import { HAND_TOTAL_POINTS, winningTeamId } from './belote/scoring';
 
@@ -17,12 +18,12 @@ function makeId(prefix: string): string {
 
 /** Entrée d'une manche future : non jouée → ne compte pas dans les totaux. */
 function emptyEntry(): RoundEntry {
-  return { bid: null, tricks: null, bonus: 0, validated: false };
+  return { bid: null, tricks: null, bonus: 0, bidKind: DEFAULT_BID_KIND, validated: false };
 }
 
 /** Entrée d'une manche atteinte : démarre à 0 (pas besoin de cliquer pour un 0). */
 function zeroEntry(): RoundEntry {
-  return { bid: 0, tricks: 0, bonus: 0, validated: false };
+  return { bid: 0, tricks: 0, bonus: 0, bidKind: DEFAULT_BID_KIND, validated: false };
 }
 
 /** Initialise à 0 les entrées d'une manche encore vierges (sans écraser l'existant). */
@@ -44,13 +45,13 @@ function initRoundToZero(game: Game, round: number): Game {
   return { ...game, rounds: { ...game.rounds, [round]: next } };
 }
 
-function createGame(gameKey: string, names: string[], cardsPerRound: number[]): Game {
+function createGame(gameKey: string, names: string[], setup: GameSetup): Game {
   const players: Player[] = names.map((name) => ({
     id: makeId('p'),
     name: name.trim(),
   }));
   const rounds: Game['rounds'] = {};
-  for (let r = 1; r <= cardsPerRound.length; r++) {
+  for (let r = 1; r <= setup.cardsPerRound.length; r++) {
     rounds[r] = {};
     // Manche 1 démarrée à 0 ; manches suivantes vierges (non comptées).
     for (const p of players) {
@@ -58,10 +59,10 @@ function createGame(gameKey: string, names: string[], cardsPerRound: number[]): 
     }
   }
   return {
+    ...setup,
     id: makeId('g'),
     gameKey,
     players,
-    cardsPerRound,
     currentRound: 1,
     rounds,
     createdAt: Date.now(),
@@ -91,6 +92,47 @@ function createBeloteGame(teams: [BeloteTeam, BeloteTeam], targetScore: number):
   };
 }
 
+// --- Persistance -------------------------------------------------------------
+
+/** Forme du state persisté (cf. partialize : les deux parties, pas l'écran courant). */
+type PersistedState = { game?: Game | null; beloteGame?: BeloteGame | null };
+
+export const PERSIST_VERSION = 2;
+
+/**
+ * Migrations du state persisté (exportée à part pour être testable) :
+ * - v1 : Game.totalRounds (number) → Game.cardsPerRound (number[]). Une partie
+ *   persistée avant ce changement n'a pas de cardsPerRound et ferait planter tous
+ *   les écrans Skull King qui lisent `game.cardsPerRound.length`/`[...]` — on
+ *   l'efface plutôt que de deviner un format qu'on ne peut pas reconstituer
+ *   fidèlement.
+ * - v2 : ajout du système de score (Game.scoreSystem / cannonballRule). Une
+ *   partie persistée avant ce changement se jouait forcément au système
+ *   classique, sans option Rascal — on complète au lieu de l'effacer.
+ * Le tableau Belote n'est concerné par aucune des deux.
+ *
+ * Les étapes s'enchaînent (pas de `return` anticipé) : un état stocké en v1
+ * doit pouvoir traverser la v2 puis la v3 le jour où elle existera.
+ */
+export function migratePersistedState(persisted: unknown, version: number) {
+  let state = persisted as PersistedState;
+
+  if (version < 1 && state?.game && !Array.isArray(state.game.cardsPerRound)) {
+    state = { ...state, game: null };
+  }
+
+  if (version < 2 && state?.game) {
+    const migrated: Game = {
+      ...state.game,
+      scoreSystem: 'skull-king',
+      cannonballRule: false,
+    };
+    state = { ...state, game: migrated };
+  }
+
+  return state;
+}
+
 // --- Store -------------------------------------------------------------------
 
 type State = {
@@ -103,12 +145,13 @@ type State = {
 type Actions = {
   markHydrated: () => void;
   setScreen: (s: Screen) => void;
-  startGame: (gameKey: string, names: string[], cardsPerRound: number[]) => void;
+  startGame: (gameKey: string, names: string[], setup: GameSetup) => void;
   resumeGame: () => void;
   abandonGame: () => void;
   setBid: (round: number, playerId: string, value: number) => void;
   setTricks: (round: number, playerId: string, value: number) => void;
   setBonus: (round: number, playerId: string, value: number) => void;
+  setBidKind: (round: number, playerId: string, kind: BidKind) => void;
   commitRound: () => void;
   goToRound: (round: number) => void;
   startBeloteGame: (teams: [BeloteTeam, BeloteTeam], targetScore: number) => void;
@@ -133,8 +176,8 @@ export const useStore = create<State & Actions>()(
 
       setScreen: (screen) => set({ screen }),
 
-      startGame: (gameKey, names, cardsPerRound) => {
-        set({ game: createGame(gameKey, names, cardsPerRound), screen: 'round' });
+      startGame: (gameKey, names, setup) => {
+        set({ game: createGame(gameKey, names, setup), screen: 'round' });
       },
 
       resumeGame: () => {
@@ -153,6 +196,9 @@ export const useStore = create<State & Actions>()(
 
       setBonus: (round, playerId, value) =>
         set((state) => updateEntry(state, round, playerId, { bonus: value })),
+
+      setBidKind: (round, playerId, kind) =>
+        set((state) => updateEntry(state, round, playerId, { bidKind: kind })),
 
       commitRound: () => {
         const g = get().game;
@@ -265,22 +311,21 @@ export const useStore = create<State & Actions>()(
       storage: createJSONStorage(() => AsyncStorage),
       // On ne persiste que les parties, pas l'écran courant ni l'état d'hydratation.
       partialize: (state) => ({ game: state.game, beloteGame: state.beloteGame }),
-      onRehydrateStorage: () => (state) => {
+      onRehydrateStorage: () => (state, error) => {
+        // Sans ce garde-fou, un storage corrompu ou une migration qui jette
+        // laisserait `hydrated` à false — et l'app bloquée sur son spinner
+        // (cf. la branche de chargement d'App.tsx). On repart alors sans
+        // partie plutôt que de ne jamais démarrer.
+        if (error) {
+          useStore.setState({ hydrated: true });
+          return;
+        }
         state?.markHydrated();
       },
-      // v1 : Game.totalRounds (number) → Game.cardsPerRound (number[]). Une partie
-      // persistée avant ce changement n'a pas de cardsPerRound et ferait planter tous
-      // les écrans Skull King qui lisent `game.cardsPerRound.length`/`[...]` — on
-      // l'efface plutôt que de deviner un format qu'on ne peut pas reconstituer
-      // fidèlement (le tableau belote n'est pas concerné par ce changement).
-      version: 1,
-      migrate: (persisted: unknown, version) => {
-        const state = persisted as { game?: Game | null; beloteGame?: BeloteGame | null };
-        if (version < 1 && state?.game && !Array.isArray(state.game.cardsPerRound)) {
-          return { ...state, game: null };
-        }
-        return state;
-      },
+      // Historique des versions et raison de chaque migration : cf.
+      // migratePersistedState ci-dessus.
+      version: PERSIST_VERSION,
+      migrate: migratePersistedState,
     },
   ),
 );

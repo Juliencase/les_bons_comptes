@@ -19,7 +19,9 @@ import { colors, goldGradient, goldTint, radius, spacing } from '../theme';
 import {
   cardsForRound,
   cumulativeTotal,
+  DEFAULT_BID_KIND,
   isEntryComplete,
+  rascalPotential,
   tricksEnteredForRound,
 } from '../lib/scoring';
 
@@ -29,6 +31,7 @@ export default function RoundScreen() {
   const setBid = useStore((s) => s.setBid);
   const setTricks = useStore((s) => s.setTricks);
   const setBonus = useStore((s) => s.setBonus);
+  const setBidKind = useStore((s) => s.setBidKind);
   const commitRound = useStore((s) => s.commitRound);
   const goToRound = useStore((s) => s.goToRound);
 
@@ -41,6 +44,10 @@ export default function RoundScreen() {
   // Partie déjà terminée : on rouvre une manche passée pour corriger un score,
   // les modifications s'appliquent immédiatement (la manche reste validée).
   const editMode = !!game.finishedAt;
+  // En Rascal sans boulet de canon, toutes les mises de la manche valent le
+  // même potentiel : on l'annonce une fois en sous-titre (§4.B). Avec l'option,
+  // il dépend du type de mise de chaque joueur → affiché sur sa carte.
+  const showPotential = game.scoreSystem === 'rascal' && !game.cannonballRule;
 
   const entries = game.players.map((p) => game.rounds[round]?.[p.id]);
   const allComplete = entries.every((e) => isEntryComplete(e));
@@ -64,7 +71,9 @@ export default function RoundScreen() {
             />
           }
           title={editMode ? `Modifier la manche ${round}` : `Manche ${round}/${totalRounds}`}
-          subtitle={`${cards} carte${cards > 1 ? 's' : ''}`}
+          subtitle={`${cards} carte${cards > 1 ? 's' : ''}${
+            showPotential ? ` · potentiel ${rascalPotential(cards, DEFAULT_BID_KIND)} pts` : ''
+          }`}
           right={<IconButton icon="📊" label="Voir le tableau des scores" onPress={() => setScreen('scoreboard')} />}
           bordered
         />
@@ -87,6 +96,7 @@ export default function RoundScreen() {
               bid: 0,
               tricks: 0,
               bonus: 0,
+              validated: false,
             };
             return (
               <PlayerRoundRow
@@ -95,9 +105,12 @@ export default function RoundScreen() {
                 cumulative={cumulativeTotal(game, p.id)}
                 entry={entry}
                 cards={cards}
+                system={game.scoreSystem}
+                cannonballRule={game.cannonballRule}
                 onBid={(v) => setBid(round, p.id, v)}
                 onTricks={(v) => setTricks(round, p.id, v)}
                 onBonus={(v) => setBonus(round, p.id, v)}
+                onBidKind={(k) => setBidKind(round, p.id, k)}
               />
             );
           })}

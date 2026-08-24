@@ -2,6 +2,7 @@
 import React from 'react';
 import GameHomeScreen from '../components/GameHomeScreen';
 import { getGame, playerRange } from '../lib/games';
+import { getScoreSystem } from '../lib/scoreSystems';
 import { useStore } from '../lib/store';
 
 // Seul Skull King est implémenté pour l'instant — cf. CLAUDE.md.
@@ -25,7 +26,11 @@ export default function HomeScreen() {
       title="Skull King"
       playerRangeText={playerRange(activeGame)}
       durationMin={activeGame.duration}
-      footer={`Système classique · ${playerRange(activeGame)} joueurs`}
+      footer={
+        hasGame && !finished
+          ? `Système ${getScoreSystem(game!.scoreSystem).name} · ${playerRange(activeGame)} joueurs`
+          : `Classique ou Rascal · ${playerRange(activeGame)} joueurs`
+      }
       onBack={() => setScreen('games')}
       onNewGame={() => setScreen('setup')}
       resumeLabel={

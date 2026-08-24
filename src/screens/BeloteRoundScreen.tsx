@@ -6,7 +6,7 @@ import Button from '../components/Button';
 import IconButton from '../components/IconButton';
 import PointsInput from '../components/PointsInput';
 import ScreenHeader from '../components/ScreenHeader';
-import TeamToggle from '../components/TeamToggle';
+import SegmentedToggle from '../components/SegmentedToggle';
 import { useStore } from '../lib/store';
 import {
   HAND_TOTAL_POINTS,
@@ -95,7 +95,7 @@ export default function BeloteRoundScreen() {
 
           <View style={styles.field}>
             <Text style={styles.label}>Équipe preneuse</Text>
-            <TeamToggle
+            <SegmentedToggle
               options={[
                 { id: teamA.id, name: teamName(teamA) },
                 { id: teamB.id, name: teamName(teamB) },
@@ -157,7 +157,7 @@ export default function BeloteRoundScreen() {
 
           <View style={styles.field}>
             <Text style={styles.label}>Capot (toutes les levées)</Text>
-            <TeamToggle
+            <SegmentedToggle
               options={[
                 { id: teamA.id, name: teamName(teamA) },
                 { id: teamB.id, name: teamName(teamB) },
@@ -171,7 +171,7 @@ export default function BeloteRoundScreen() {
 
           <View style={styles.field}>
             <Text style={styles.label}>Belote-Rebelote</Text>
-            <TeamToggle
+            <SegmentedToggle
               options={[
                 { id: teamA.id, name: teamName(teamA) },
                 { id: teamB.id, name: teamName(teamB) },

@@ -34,7 +34,9 @@ export default function ScoreTable({ game, onRoundPress }: Props) {
     for (const p of game.players) {
       const entry = game.rounds[r]?.[p.id];
       const done = isEntryComplete(entry) && entry?.validated;
-      values[p.id] = done ? roundTotal(entry, cardsForRound(game.cardsPerRound, r)) : null;
+      values[p.id] = done
+        ? roundTotal(entry, cardsForRound(game.cardsPerRound, r), game.scoreSystem)
+        : null;
     }
     return {
       key: r,

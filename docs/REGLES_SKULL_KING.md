@@ -321,5 +321,8 @@ Pour une première version « compteur de points » simple :
 4. Calcul automatique du score de la manche + cumul du total.
 5. Tableau de scores et **classement final** (meilleur total gagne).
 
-Extensions ultérieures : système Rascal + Boulet de canon, compteurs de bonus détaillés,
-formats de manches personnalisés, historique des parties.
+Déjà implémenté au-delà de ce MVP : formats de manches personnalisés (§2) et
+système Rascal avec l'option Boulet de canon (§4.B).
+
+Extensions ultérieures : compteurs de bonus détaillés (§5, option b),
+historique des parties.

@@ -8,7 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 "Les Bons Comptes" — a React Native (Expo) mobile app for score-keeping card
 and board games. It's built to host several games (see `GamesScreen` and its
-`GAMES` list in `src/lib/games.ts`, designed to grow); **Skull King** and
+`GAMES` list in `src/lib/games.ts`, designed to grow); **Skull King** (both
+scoring systems — classic and Rascal, incl. the optional cannonball bid) and
 **Belote** (classic, contract fixed at 82 — no coinche) are implemented so
 far. Local-only, offline, no backend: game state is persisted on-device via
 AsyncStorage. Full Skull King rules (used to derive its scoring engine) are in
@@ -31,16 +32,30 @@ npm run ios        # expo start --ios
 npm run web        # expo start --web (needs react-dom + react-native-web, not installed by default)
 npx tsc --noEmit   # typecheck
 npm test           # jest (preset: jest-expo)
-npx jest src/lib/scoring.test.ts          # Skull King engine tests
-npx jest src/lib/belote/scoring.test.ts   # Belote engine tests
+npx jest src/lib/scoring.test.ts          # Skull King engine tests (unit)
+npx jest src/lib/belote/scoring.test.ts   # Belote engine tests (unit)
+npx jest src/lib/store.test.ts            # Skull King store tests (flows + migrations)
+npx jest src/lib/stats.test.ts            # Skull King end-of-game awards
 npm run update-apk # eas-cli build --platform android --profile preview (non-interactive)
 ```
 
 There is no linter configured in this repo. Tests are Jest (`jest-expo` preset,
-config lives in the `jest` key of `package.json`), covering `src/lib/scoring.ts`
-(Skull King) and `src/lib/belote/scoring.ts` (Belote) — extend the matching
-test file first when touching either engine. Verify changes with
-`npx tsc --noEmit` + `npm test`, and by running the app.
+config lives in the `jest` key of `package.json`), on two levels:
+
+- **unit** — the pure engines `src/lib/scoring.ts` (Skull King, both scoring
+  systems), `src/lib/belote/scoring.ts` (Belote) and `src/lib/stats.ts` (the
+  end-of-game awards). Extend the matching test file first when touching either
+  engine.
+- **functional** — `src/lib/store.test.ts` drives the Skull King store through
+  its actions the way the screens do (create → enter → validate → correct),
+  and covers `migratePersistedState` (the persisted-state migrations, exported
+  from `store.ts` for that reason). It mocks AsyncStorage with the package's
+  own jest mock, at the top of the file — there is no global jest setup file.
+  Belote has no store-level tests yet.
+
+There are **no component/screen tests**: `@testing-library/react-native` is not
+a dependency, so UI changes are only covered by `npx tsc --noEmit`. Verify
+changes with `npx tsc --noEmit` + `npm test`, and by running the app.
 
 ## Architecture
 
@@ -56,24 +71,50 @@ component via if/else — switching screens is just `setScreen(...)`. `Screen`
   Skull King `Game` and the active Belote `BeloteGame` — plus the current
   `Screen`. A player can have an unfinished game of each in parallel; leaving
   one game's screens doesn't touch the other's state. Skull King mutations
-  (bids, tricks, bonuses, round commits) apply immutable patches to
+  (bids, tricks, bonuses, bid kinds, round commits) apply immutable patches to
   `game.rounds[round][playerId]` via `updateEntry`; Belote mutations
   (taker, points, capot, Belote-Rebelote, hand commits) apply immutable
   patches to `beloteGame.hands[hand]` via `updateHand`. Wait for `hydrated`
   before trusting either game (see the loading branch in `App.tsx`).
 - **`src/lib/types.ts`** — Skull King domain types: `Game`, `Player`,
-  `RoundEntry` (`bid`/`tricks`/`bonus`/`validated`), plus the shared `Screen`
-  union used by both games. `Game.rounds` is a sparse
+  `RoundEntry` (`bid`/`tricks`/`bonus`/`bidKind`/`validated`), `GameSetup`
+  (what `SetupScreen` chooses: `cardsPerRound` + `scoreSystem` +
+  `cannonballRule`, spread into `Game`), plus the shared `Screen` union used
+  by both games. `Game.rounds` is a sparse
   `Record<round, Record<playerId, RoundEntry>>` — a round only "counts" once
   its entries are `validated`.
 - **`src/lib/scoring.ts`** — pure calculation functions (`bidScore`,
-  `roundTotal`, `cumulativeTotal(s)`, `ranking`), no store/React dependency.
-  This is the classic "Skull King" scoring system per
-  docs/REGLES_SKULL_KING.md §4.A. Card count per round comes from
+  `rascalScore`, `roundTotal`, `cumulativeTotal(s)`, `ranking`), no
+  store/React dependency. It implements **both** scoring systems, picked at
+  game creation and stored on `Game.scoreSystem`: the classic one
+  (`bidScore`, §4.A) and **Rascal** (`rascalScore`, §4.B — same potential
+  `10 × cards` for everyone, won at 100 / 50 / 0 % depending on how close the
+  bid was). Two consequences to keep in mind: `roundTotal` **needs the
+  system** (it is not `bidScore + bonus` in Rascal — bonuses are weighted by
+  the same 100/50/0 %, so they cannot be added after the fact), and the
+  optional cannonball rule (`Game.cannonballRule`) makes each entry carry its
+  own `bidKind` — read it through `bidKindOf(entry)`, never directly, since
+  older entries have none. Card count per round comes from
   `cardsForRound(game.cardsPerRound, round)`, reading `Game.cardsPerRound` —
   the array set at game creation from the chosen `FormatDef`
   (`src/lib/formats.ts`, docs/REGLES_SKULL_KING.md §2). Round count is always
   `game.cardsPerRound.length`; there is no separate `totalRounds` field.
+- **`src/lib/scoreSystems.ts`** — catalog + display copy for the two Skull
+  King scoring systems (`SCORE_SYSTEMS`) and the two Rascal bid kinds
+  (`BID_KINDS`), same shape/role as `formats.ts`. Labels shown in
+  `SetupScreen`, `PlayerRoundRow`, `HomeScreen` and `ScoreboardScreen` come
+  from here — no rule copy duplicated in the screens.
+- **`src/lib/stats.ts`** — the end-of-game "palmarès": pure functions over
+  `Game` (`playerStats` aggregates each player's validated rounds, `awards`
+  turns them into titles). Adding a title = one entry in `AWARD_DEFS` (value to
+  rank on, `mode: 'min'` to award the lowest, and the detail line). Two rules
+  are enforced in `resolveAward` and worth keeping: a title nobody stands out
+  on (everyone tied) or worth zero (no malus at all) is **not** awarded, and
+  ties share it. Note `RoundEntry.bonus` is a net per round, so a +20 and a -5
+  entered on the same round cannot be told apart — hence "bonus rounds" vs
+  "malus rounds" rather than true totals; and a Rascal round scored at 0 %
+  (`rascalOutcome === 'miss'`) contributes neither, so the palmarès never
+  credits points the scoreboard does not show.
 - **`src/lib/belote/`** — the Belote domain, isolated from Skull King's:
   - `types.ts`: `BeloteTeam` (2 players), `BeloteHandEntry`
     (`takerTeamId`/`teamAPoints`/`capotTeamId`/`beloteRebeloteTeamId`/`validated`),
@@ -109,9 +150,13 @@ component via if/else — switching screens is just `setScreen(...)`. `Screen`
   a touchable-row + current-row-highlight + total-row skeleton — used by
   both `ScoreTable` and `BeloteHandTable`, which now only supply their
   columns/rows/cell-width and stay responsible for their own per-row score
-  math). `TeamToggle`/`PointsInput` are Belote-only for now but written
-  generically in case a future game needs them. `PlayerRoundRow` is
-  Skull-King-specific (different data shape, no Belote equivalent needed).
+  math), `SegmentedToggle` (2-option exclusive picker, + an optional "none"
+  pill — Belote's taker/capot/Belote-Rebelote and Skull King's Rascal bid
+  kind; generic over its id type, so ids stay typed at each call site).
+  `PointsInput` is Belote-only for now but written generically in case a
+  future game needs it; `AwardList` (palmarès rows) is Skull-King-only for now
+  but takes plain rows, so a Belote palmarès could reuse it as is. `PlayerRoundRow` is Skull-King-specific (different
+  data shape, no Belote equivalent needed).
 - **`src/theme.ts`** — shared design tokens (`colors`, `spacing`, `radius`,
   `opacity`, `goldTint`). Use these instead of magic values/inline colors.
 - **Post-game score editing** (both games): once the game's `finishedAt` is
@@ -127,6 +172,12 @@ component via if/else — switching screens is just `setScreen(...)`. `Screen`
   calls `goToRound`/`goToBeloteHand` to go back, edit, and re-validate an
   earlier round without losing later ones — nothing is final until the game
   ends and even then it stays editable.
+- **End-of-game awards** (Skull King only): once `finishedAt` is set,
+  `ScoreboardScreen` shows a "palmarès" of fun titles (most/fewest tricks, most
+  exact bids, …) between the ranking and the round table — see
+  `src/lib/stats.ts`. It is recomputed from `Game` on every render, so
+  correcting a round from the same screen updates it immediately, and it is
+  simply hidden when no title can be awarded.
 
 ## Conventions
 

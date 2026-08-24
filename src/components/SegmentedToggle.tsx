@@ -1,29 +1,31 @@
-// Sélecteur d'équipe (2 options + « aucune » optionnelle) — agnostique, piloté par props.
+// Sélecteur exclusif à 2 options (+ « aucune » optionnelle) — agnostique, piloté
+// par props. Utilisé pour les équipes de Belote (preneur, capot, Belote-Rebelote)
+// et pour le type de mise Rascal (chevrotine / boulet de canon).
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, goldTint, opacity, radius, spacing } from '../theme';
 
-export type TeamToggleOption = {
-  id: string;
+export type SegmentedOption<T extends string> = {
+  id: T;
   name: string;
 };
 
-type Props = {
-  options: [TeamToggleOption, TeamToggleOption];
-  selectedId: string | null;
-  onSelect: (id: string | null) => void;
-  /** Ajoute un bouton « aucune équipe » (ex. pas de Belote-Rebelote cette manche). */
+type Props<T extends string> = {
+  options: [SegmentedOption<T>, SegmentedOption<T>];
+  selectedId: T | null;
+  onSelect: (id: T | null) => void;
+  /** Ajoute un bouton « aucune option » (ex. pas de Belote-Rebelote cette manche). */
   allowNone?: boolean;
   noneLabel?: string;
 };
 
-export default function TeamToggle({
+export default function SegmentedToggle<T extends string>({
   options,
   selectedId,
   onSelect,
   allowNone,
   noneLabel = 'Aucune',
-}: Props) {
+}: Props<T>) {
   return (
     <View style={styles.row}>
       {options.map((opt) => {
