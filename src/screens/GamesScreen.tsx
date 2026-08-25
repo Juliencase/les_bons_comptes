@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import GameCard from '../components/GameCard';
 import { GAMES } from '../lib/games';
 import { useStore } from '../lib/store';
-import { colors, fonts, spacing } from '../theme';
+import { colors, contentMaxWidth, fonts, spacing } from '../theme';
 
 export default function GamesScreen() {
   const setScreen = useStore((s) => s.setScreen);
@@ -57,7 +57,13 @@ export default function GamesScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  container: { padding: spacing.xl, paddingBottom: spacing.xxl },
+  container: {
+    padding: spacing.xl,
+    paddingBottom: spacing.xxl,
+    maxWidth: contentMaxWidth,
+    width: '100%',
+    alignSelf: 'center',
+  },
   hero: { alignItems: 'center', marginTop: spacing.xl, marginBottom: spacing.xxl },
   title: {
     color: colors.gold,

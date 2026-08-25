@@ -39,6 +39,12 @@ export const radius = {
   lg: 16,
 };
 
+// Largeur de contenu maximale : sans plafond, useWindowDimensions() renvoie la
+// largeur de la fenêtre navigateur (web) au lieu de celle, bornée, d'un écran
+// de téléphone — les mises en page pensées pour mobile (grille de cartes,
+// image d'accueil) exploseraient en taille sur un grand écran desktop.
+export const contentMaxWidth = 480;
+
 // Teintes translucides de l'or, utilisées pour mettre en évidence la manche
 // courante (fond de ligne, cellule, encadré d'avertissement) sans dupliquer
 // des rgba() en dur à plusieurs endroits.

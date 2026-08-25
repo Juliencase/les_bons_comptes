@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { playerRange } from '../lib/games';
-import { colors, goldGradient, opacity, radius, spacing } from '../theme';
+import { colors, contentMaxWidth, goldGradient, opacity, radius, spacing } from '../theme';
 
 type Props = {
   emoji: string;
@@ -43,7 +43,8 @@ export default function GameCard({
   // useWindowDimensions (plutôt que Dimensions.get au chargement du module)
   // pour rester correct après rotation/redimensionnement.
   const { width: screenWidth } = useWindowDimensions();
-  const tileSize = (screenWidth - spacing.xl * 2 - spacing.md) / 2;
+  const availableWidth = Math.min(screenWidth, contentMaxWidth);
+  const tileSize = (availableWidth - spacing.xl * 2 - spacing.md) / 2;
   const imageFrameWidth = tileSize * 0.76;
   const imageFrameHeight = tileSize * 0.58;
 
