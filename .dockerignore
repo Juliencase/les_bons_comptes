@@ -1,0 +1,6 @@
+.git
+.github
+.expo
+dist
+node_modules
+docs

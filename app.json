@@ -22,6 +22,9 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "experiments": {
+      "baseUrl": "/les-bons-comptes/"
+    },
     "extra": {
       "eas": {
         "projectId": "459fbdce-0bce-4d0f-a13e-872c1b60d1c6"
