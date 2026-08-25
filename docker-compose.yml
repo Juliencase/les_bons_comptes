@@ -1,0 +1,22 @@
+networks:
+  pi-net:
+    external: true
+
+services:
+  lesbonscomptes-web:
+    build: .
+    image: lesbonscomptes-web:latest
+    container_name: lesbonscomptes-web
+    restart: unless-stopped
+    networks:
+      - pi-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.lesbonscomptes.rule=PathPrefix(`/lesbonscomptes`)"
+      - "traefik.http.routers.lesbonscomptes.entrypoints=web"
+      - "traefik.http.routers.lesbonscomptes.middlewares=lesbonscomptes-redirect,lesbonscomptes-strip"
+      - "traefik.http.middlewares.lesbonscomptes-redirect.redirectregex.regex=^(.*)/lesbonscomptes$$"
+      - "traefik.http.middlewares.lesbonscomptes-redirect.redirectregex.replacement=$${1}/lesbonscomptes/"
+      - "traefik.http.middlewares.lesbonscomptes-redirect.redirectregex.permanent=true"
+      - "traefik.http.middlewares.lesbonscomptes-strip.stripprefix.prefixes=/lesbonscomptes"
+      - "traefik.http.services.lesbonscomptes.loadbalancer.server.port=80"
