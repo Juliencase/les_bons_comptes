@@ -29,7 +29,7 @@ don't assume logic can be shared across them.
 npm start          # expo start — dev server, pick platform from the CLI menu
 npm run android    # expo start --android
 npm run ios        # expo start --ios
-npm run web        # expo start --web (needs react-dom + react-native-web, not installed by default)
+npm run web        # expo start --web
 npx tsc --noEmit   # typecheck
 npm test           # jest (preset: jest-expo)
 npx jest src/lib/scoring.test.ts          # Skull King engine tests (unit)
