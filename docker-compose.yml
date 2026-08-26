@@ -12,11 +12,6 @@ services:
       - pi-net
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.les-bons-comptes.rule=PathPrefix(`/les-bons-comptes`)"
+      - "traefik.http.routers.les-bons-comptes.rule=Host(`les-bons-comptes.valodin.fr`)"
       - "traefik.http.routers.les-bons-comptes.entrypoints=web"
-      - "traefik.http.routers.les-bons-comptes.middlewares=les-bons-comptes-redirect,les-bons-comptes-strip"
-      - "traefik.http.middlewares.les-bons-comptes-redirect.redirectregex.regex=^(.*)/les-bons-comptes$$"
-      - "traefik.http.middlewares.les-bons-comptes-redirect.redirectregex.replacement=$${1}/les-bons-comptes/"
-      - "traefik.http.middlewares.les-bons-comptes-redirect.redirectregex.permanent=true"
-      - "traefik.http.middlewares.les-bons-comptes-strip.stripprefix.prefixes=/les-bons-comptes"
       - "traefik.http.services.les-bons-comptes.loadbalancer.server.port=80"
