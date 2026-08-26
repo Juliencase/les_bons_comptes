@@ -9,6 +9,9 @@ jobs:
     runs-on: [self-hosted, pi]
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - name: Lint
         run: |
           npm ci
