@@ -58,8 +58,8 @@ GoogleService-Info.plist
 !.env.example
 
 # Config locale de l'assistant (sauf les agents partagés)
-.claude/*
-!.claude/agents/
+.claude/settings.json
+
 
 # Divers
 *.log
