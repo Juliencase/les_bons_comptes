@@ -39,7 +39,11 @@ npx jest src/lib/stats.test.ts            # Skull King end-of-game awards
 npm run update-apk # eas-cli build --platform android --profile preview (non-interactive)
 ```
 
-There is no linter configured in this repo. Tests are Jest (`jest-expo` preset,
+Lint/format is ESLint (`eslint-config-expo` flat config, `npm run lint`) +
+Prettier (`npm run format`), enforced by the `.githooks/pre-commit` hook
+(auto-fixes and restages on commit, blocks only on a remaining ESLint error)
+and by a `deploy.yml` CI step — see root `CLAUDE.md` for the hook activation
+command. Tests are Jest (`jest-expo` preset,
 config lives in the `jest` key of `package.json`), on two levels:
 
 - **unit** — the pure engines `src/lib/scoring.ts` (Skull King, both scoring
