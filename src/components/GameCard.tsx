@@ -11,7 +11,14 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { playerRange } from '../lib/games';
-import { colors, contentMaxWidth, goldGradient, opacity, radius, spacing } from '../theme';
+import {
+  colors,
+  contentMaxWidth,
+  goldGradient,
+  opacity,
+  radius,
+  spacing,
+} from '../theme';
 
 type Props = {
   emoji: string;
@@ -67,7 +74,11 @@ export default function GameCard({
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.tile, tileSizeStyle, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.tile,
+        tileSizeStyle,
+        pressed && styles.pressed,
+      ]}
       accessibilityRole="button"
     >
       {image && (
@@ -153,5 +164,10 @@ const styles = StyleSheet.create({
     bottom: 10,
   },
   name: { color: colors.text, fontSize: 15, fontWeight: '800' },
-  players: { color: colors.gold, fontSize: 10, fontWeight: '700', marginTop: 2 },
+  players: {
+    color: colors.gold,
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 2,
+  },
 });

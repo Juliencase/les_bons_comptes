@@ -21,9 +21,15 @@ type Props = {
 
 export default function ScoreTable({ game, onRoundPress }: Props) {
   const totals = cumulativeTotals(game);
-  const rounds = Array.from({ length: game.cardsPerRound.length }, (_, i) => i + 1);
+  const rounds = Array.from(
+    { length: game.cardsPerRound.length },
+    (_, i) => i + 1,
+  );
 
-  const columns: ScoreGridColumn[] = game.players.map((p) => ({ id: p.id, label: p.name }));
+  const columns: ScoreGridColumn[] = game.players.map((p) => ({
+    id: p.id,
+    label: p.name,
+  }));
 
   const rows: ScoreGridRow[] = rounds.map((r) => {
     // Le surlignage « manche en cours » n'a de sens que pendant une partie
@@ -35,7 +41,11 @@ export default function ScoreTable({ game, onRoundPress }: Props) {
       const entry = game.rounds[r]?.[p.id];
       const done = isEntryComplete(entry) && entry?.validated;
       values[p.id] = done
-        ? roundTotal(entry, cardsForRound(game.cardsPerRound, r), game.scoreSystem)
+        ? roundTotal(
+            entry,
+            cardsForRound(game.cardsPerRound, r),
+            game.scoreSystem,
+          )
         : null;
     }
     return {
@@ -43,7 +53,9 @@ export default function ScoreTable({ game, onRoundPress }: Props) {
       isCurrent,
       values,
       labelExtra: (
-        <Text style={{ color: colors.textDim, fontWeight: '400', fontSize: 12 }}>
+        <Text
+          style={{ color: colors.textDim, fontWeight: '400', fontSize: 12 }}
+        >
           {'  '}({cardsForRound(game.cardsPerRound, r)} c.)
         </Text>
       ),
@@ -51,6 +63,12 @@ export default function ScoreTable({ game, onRoundPress }: Props) {
   });
 
   return (
-    <ScoreGrid columns={columns} rows={rows} totals={totals} cellWidth={CELL} onRowPress={onRoundPress} />
+    <ScoreGrid
+      columns={columns}
+      rows={rows}
+      totals={totals}
+      cellWidth={CELL}
+      onRowPress={onRoundPress}
+    />
   );
 }

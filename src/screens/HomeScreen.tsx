@@ -34,11 +34,15 @@ export default function HomeScreen() {
       onBack={() => setScreen('games')}
       onNewGame={() => setScreen('setup')}
       resumeLabel={
-        hasGame && !finished ? `Reprendre — manche ${game!.currentRound}/${game!.cardsPerRound.length}` : undefined
+        hasGame && !finished
+          ? `Reprendre — manche ${game!.currentRound}/${game!.cardsPerRound.length}`
+          : undefined
       }
       onResume={hasGame && !finished ? resumeGame : undefined}
       showScoreboard={hasGame}
-      scoreboardLabel={finished ? 'Voir le résultat final' : 'Voir le tableau des scores'}
+      scoreboardLabel={
+        finished ? 'Voir le résultat final' : 'Voir le tableau des scores'
+      }
       onScoreboard={() => setScreen('scoreboard')}
     />
   );

@@ -42,7 +42,10 @@ export default function SegmentedToggle<T extends string>({
               pressed && styles.pressed,
             ]}
           >
-            <Text style={[styles.label, selected && styles.labelSelected]} numberOfLines={1}>
+            <Text
+              style={[styles.label, selected && styles.labelSelected]}
+              numberOfLines={1}
+            >
               {opt.name}
             </Text>
           </Pressable>
@@ -60,7 +63,9 @@ export default function SegmentedToggle<T extends string>({
             pressed && styles.pressed,
           ]}
         >
-          <Text style={[styles.label, selectedId === null && styles.labelSelected]}>
+          <Text
+            style={[styles.label, selectedId === null && styles.labelSelected]}
+          >
             {noneLabel}
           </Text>
         </Pressable>

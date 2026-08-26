@@ -61,7 +61,9 @@ export default function SetupScreen() {
   const startGame = useStore((s) => s.startGame);
   const hasUnfinishedGame = !!game && !game.finishedAt;
 
-  const [names, setNames] = useState<string[]>(() => Array(MIN_PLAYERS).fill(''));
+  const [names, setNames] = useState<string[]>(() =>
+    Array(MIN_PLAYERS).fill(''),
+  );
   const [formatKey, setFormatKey] = useState(DEFAULT_FORMAT_KEY);
   const [systemKey, setSystemKey] = useState<ScoreSystem>(DEFAULT_SCORE_SYSTEM);
   const [cannonballRule, setCannonballRule] = useState(false);
@@ -70,9 +72,7 @@ export default function SetupScreen() {
     setNames((prev) => prev.map((n, idx) => (idx === i ? v : n)));
 
   const addPlayer = () =>
-    setNames((prev) =>
-      prev.length < MAX_PLAYERS ? [...prev, ''] : prev,
-    );
+    setNames((prev) => (prev.length < MAX_PLAYERS ? [...prev, ''] : prev));
 
   const removePlayer = (i: number) =>
     setNames((prev) =>
@@ -150,7 +150,11 @@ export default function SetupScreen() {
               ))}
 
               {names.length < MAX_PLAYERS && (
-                <Button variant="dashed" label="+ Ajouter un joueur" onPress={addPlayer} />
+                <Button
+                  variant="dashed"
+                  label="+ Ajouter un joueur"
+                  onPress={addPlayer}
+                />
               )}
             </View>
           </View>
@@ -203,7 +207,11 @@ export default function SetupScreen() {
               ? `${names.length} joueur${names.length > 1 ? 's' : ''} · ${format.cardsPerRound.length} manche${format.cardsPerRound.length > 1 ? 's' : ''} · système ${system.name}`
               : `Au moins ${MIN_PLAYERS} joueurs`}
           </Text>
-          <Button label="Commencer la partie" disabled={!canStart} onPress={start} />
+          <Button
+            label="Commencer la partie"
+            disabled={!canStart}
+            onPress={start}
+          />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

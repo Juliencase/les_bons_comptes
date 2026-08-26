@@ -24,7 +24,7 @@ describe('cardsForRound', () => {
     expect(cardsForRound(standard, 10)).toBe(10);
   });
 
-  it("suit le format personnalisé plutôt que le n° de manche", () => {
+  it('suit le format personnalisé plutôt que le n° de manche', () => {
     expect(cardsForRound([6, 7, 8, 9, 10], 1)).toBe(6);
   });
 });
@@ -42,7 +42,7 @@ describe('bidScore', () => {
     expect(bidScore(3, 3, 5)).toBe(60);
   });
 
-  it('mise ≥ 1 ratée : -10 par pli d\'écart', () => {
+  it("mise ≥ 1 ratée : -10 par pli d'écart", () => {
     expect(bidScore(2, 4, 5)).toBe(-20);
   });
 
@@ -53,13 +53,21 @@ describe('bidScore', () => {
 });
 
 describe('bidKindOf', () => {
-  it('vaut chevrotine par défaut (parties classiques / d\'avant l\'option)', () => {
-    expect(bidKindOf({ bid: 1, tricks: 1, bonus: 0, validated: false })).toBe('chevrotine');
+  it("vaut chevrotine par défaut (parties classiques / d'avant l'option)", () => {
+    expect(bidKindOf({ bid: 1, tricks: 1, bonus: 0, validated: false })).toBe(
+      'chevrotine',
+    );
   });
 
   it('respecte le type de mise saisi', () => {
     expect(
-      bidKindOf({ bid: 1, tricks: 1, bonus: 0, bidKind: 'boulet', validated: false }),
+      bidKindOf({
+        bid: 1,
+        tricks: 1,
+        bonus: 0,
+        bidKind: 'boulet',
+        validated: false,
+      }),
     ).toBe('boulet');
   });
 });
@@ -144,20 +152,30 @@ describe('rascalScore', () => {
 describe('isEntryComplete', () => {
   it('incomplète si bid ou tricks est null', () => {
     expect(isEntryComplete(undefined)).toBe(false);
-    expect(isEntryComplete({ bid: null, tricks: 2, bonus: 0, validated: false })).toBe(false);
-    expect(isEntryComplete({ bid: 2, tricks: null, bonus: 0, validated: false })).toBe(false);
+    expect(
+      isEntryComplete({ bid: null, tricks: 2, bonus: 0, validated: false }),
+    ).toBe(false);
+    expect(
+      isEntryComplete({ bid: 2, tricks: null, bonus: 0, validated: false }),
+    ).toBe(false);
   });
 
   it('complète si bid et tricks sont renseignés', () => {
-    expect(isEntryComplete({ bid: 0, tricks: 0, bonus: 0, validated: false })).toBe(true);
+    expect(
+      isEntryComplete({ bid: 0, tricks: 0, bonus: 0, validated: false }),
+    ).toBe(true);
   });
 });
 
 describe('roundTotal', () => {
-  it('vaut 0 si la manche n\'est pas saisie', () => {
+  it("vaut 0 si la manche n'est pas saisie", () => {
     expect(roundTotal(undefined, 5, 'skull-king')).toBe(0);
     expect(
-      roundTotal({ bid: null, tricks: null, bonus: 0, validated: false }, 5, 'skull-king'),
+      roundTotal(
+        { bid: null, tricks: null, bonus: 0, validated: false },
+        5,
+        'skull-king',
+      ),
     ).toBe(0);
   });
 
@@ -166,7 +184,7 @@ describe('roundTotal', () => {
     expect(roundTotal(entry, 5, 'skull-king')).toBe(60 + 10);
   });
 
-  it('le bonus peut être négatif (ex. carte 7 de l\'extension)', () => {
+  it("le bonus peut être négatif (ex. carte 7 de l'extension)", () => {
     const entry: RoundEntry = { bid: 1, tricks: 1, bonus: -5, validated: true };
     expect(roundTotal(entry, 3, 'skull-king')).toBe(20 - 5);
   });
@@ -178,7 +196,7 @@ describe('roundTotal', () => {
     expect(roundTotal(entry, 5, 'rascal')).toBe(25);
   });
 
-  it('respecte le type de mise de l\'entrée en Rascal', () => {
+  it("respecte le type de mise de l'entrée en Rascal", () => {
     const entry: RoundEntry = {
       bid: 2,
       tricks: 2,
@@ -247,9 +265,21 @@ describe('cumulativeTotal / cumulativeTotals', () => {
         },
         2: {
           // 4 cartes : boulet de canon réussi → 60
-          p1: { bid: 2, tricks: 2, bonus: 0, bidKind: 'boulet', validated: true },
+          p1: {
+            bid: 2,
+            tricks: 2,
+            bonus: 0,
+            bidKind: 'boulet',
+            validated: true,
+          },
           // boulet de canon raté d'un pli → 0
-          p2: { bid: 2, tricks: 3, bonus: 30, bidKind: 'boulet', validated: true },
+          p2: {
+            bid: 2,
+            tricks: 3,
+            bonus: 30,
+            bidKind: 'boulet',
+            validated: true,
+          },
         },
       },
     });

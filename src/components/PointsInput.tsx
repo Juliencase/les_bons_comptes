@@ -12,7 +12,13 @@ type Props = {
   label: string; // accessibilité
 };
 
-export default function PointsInput({ value, min, max, onChange, label }: Props) {
+export default function PointsInput({
+  value,
+  min,
+  max,
+  onChange,
+  label,
+}: Props) {
   const [text, setText] = useState(value == null ? '' : String(value));
 
   useEffect(() => {

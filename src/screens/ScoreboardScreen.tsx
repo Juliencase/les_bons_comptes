@@ -43,7 +43,9 @@ export default function ScoreboardScreen() {
         left={
           <BackButton
             label={finished ? 'Accueil' : 'Retour'}
-            onPress={() => finished ? setScreen('home') : goToRound(game.currentRound)}
+            onPress={() =>
+              finished ? setScreen('home') : goToRound(game.currentRound)
+            }
           />
         }
         title={finished ? 'Résultat final' : 'Scores'}
@@ -54,7 +56,9 @@ export default function ScoreboardScreen() {
         {finished && winners.length > 0 && (
           <WinnerCard
             label={
-              winners.length > 1 ? 'Capitaines des Sept Mers' : 'Capitaine des Sept Mers'
+              winners.length > 1
+                ? 'Capitaines des Sept Mers'
+                : 'Capitaine des Sept Mers'
             }
             name={joinNames(winners.map((w) => nameOf(w.playerId)))}
             score={winners[0].total}
@@ -88,9 +92,14 @@ export default function ScoreboardScreen() {
         {/* Détail par manche */}
         <Text style={styles.sectionTitle}>Détail des manches</Text>
         {finished && (
-          <Text style={styles.editHint}>Touche une manche pour corriger un score.</Text>
+          <Text style={styles.editHint}>
+            Touche une manche pour corriger un score.
+          </Text>
         )}
-        <ScoreTable game={game} onRoundPress={finished ? goToRound : undefined} />
+        <ScoreTable
+          game={game}
+          onRoundPress={finished ? goToRound : undefined}
+        />
       </ScrollView>
 
       <View style={styles.footer}>
@@ -118,7 +127,12 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  editHint: { color: colors.textDim, fontSize: 12, fontStyle: 'italic', marginTop: -spacing.sm },
+  editHint: {
+    color: colors.textDim,
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginTop: -spacing.sm,
+  },
   footer: {
     padding: spacing.lg,
     borderTopWidth: 1,

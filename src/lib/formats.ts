@@ -12,13 +12,15 @@ export const FORMATS: FormatDef[] = [
   {
     key: 'standard',
     name: 'Standard',
-    description: 'Le format classique : une carte de plus à chaque manche, de 1 à 10.',
+    description:
+      'Le format classique : une carte de plus à chaque manche, de 1 à 10.',
     cardsPerRound: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   },
   {
     key: 'pas-dimpair',
     name: "Pas d'impair",
-    description: 'Seulement des nombres pairs de cartes, chacun joué deux manches de suite.',
+    description:
+      'Seulement des nombres pairs de cartes, chacun joué deux manches de suite.',
     cardsPerRound: [2, 2, 4, 4, 6, 6, 8, 8, 10, 10],
   },
   {
@@ -42,7 +44,8 @@ export const FORMATS: FormatDef[] = [
   {
     key: 'tourbillon',
     name: 'Tourbillon',
-    description: 'Ça redescend par paires : 9, 9, 7, 7, 5, 5, 3, 3, 1, 1 cartes.',
+    description:
+      'Ça redescend par paires : 9, 9, 7, 7, 5, 5, 3, 3, 1, 1 cartes.',
     cardsPerRound: [9, 9, 7, 7, 5, 5, 3, 3, 1, 1],
   },
   {

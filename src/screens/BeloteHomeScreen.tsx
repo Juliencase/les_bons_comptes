@@ -27,10 +27,16 @@ export default function BeloteHomeScreen() {
       footer={`Belote classique · contrat à 82 · ${playerRange(activeGame)} joueurs`}
       onBack={() => setScreen('games')}
       onNewGame={() => setScreen('belote-setup')}
-      resumeLabel={hasGame && !finished ? `Reprendre — manche ${beloteGame!.currentHand}` : undefined}
+      resumeLabel={
+        hasGame && !finished
+          ? `Reprendre — manche ${beloteGame!.currentHand}`
+          : undefined
+      }
       onResume={hasGame && !finished ? resumeBeloteGame : undefined}
       showScoreboard={hasGame}
-      scoreboardLabel={finished ? 'Voir le résultat final' : 'Voir le tableau des scores'}
+      scoreboardLabel={
+        finished ? 'Voir le résultat final' : 'Voir le tableau des scores'
+      }
       onScoreboard={() => setScreen('belote-scoreboard')}
     />
   );

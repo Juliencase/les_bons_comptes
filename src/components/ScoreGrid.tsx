@@ -3,7 +3,7 @@
 // ces deux jeux partagent la même forme de tableau, seule la donnée par ligne diffère.
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { colors, goldTint, opacity, radius, spacing } from '../theme';
+import { colors, goldTint, opacity, spacing } from '../theme';
 import { formatSignedScore } from '../lib/format';
 
 const NAME_COL = 120;
@@ -30,7 +30,13 @@ type Props = {
   onRowPress?: (key: number) => void;
 };
 
-export default function ScoreGrid({ columns, rows, totals, cellWidth, onRowPress }: Props) {
+export default function ScoreGrid({
+  columns,
+  rows,
+  totals,
+  cellWidth,
+  onRowPress,
+}: Props) {
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator>
       <View>
@@ -58,12 +64,22 @@ export default function ScoreGrid({ columns, rows, totals, cellWidth, onRowPress
               pressed && onRowPress && styles.pressedRow,
             ]}
           >
-            <View style={[styles.roundLabel, r.isCurrent && styles.currentRoundLabel]}>
-              <Text style={[styles.roundLabelText, r.isCurrent && styles.currentRoundLabelText]}>
+            <View
+              style={[
+                styles.roundLabel,
+                r.isCurrent && styles.currentRoundLabel,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.roundLabelText,
+                  r.isCurrent && styles.currentRoundLabelText,
+                ]}
+              >
                 {r.isCurrent && '▶ '}
                 {r.key}
                 {r.labelExtra}
-                {onRowPress && <Text style={styles.editHint}>  ✎</Text>}
+                {onRowPress && <Text style={styles.editHint}> ✎</Text>}
               </Text>
             </View>
             {columns.map((c) => {
@@ -71,12 +87,20 @@ export default function ScoreGrid({ columns, rows, totals, cellWidth, onRowPress
               return (
                 <View
                   key={c.id}
-                  style={[styles.cell, { width: cellWidth }, r.isCurrent && styles.currentCell]}
+                  style={[
+                    styles.cell,
+                    { width: cellWidth },
+                    r.isCurrent && styles.currentCell,
+                  ]}
                 >
                   <Text
                     style={[
                       styles.cellText,
-                      val == null ? styles.cellEmpty : val >= 0 ? styles.positive : styles.negative,
+                      val == null
+                        ? styles.cellEmpty
+                        : val >= 0
+                          ? styles.positive
+                          : styles.negative,
                     ]}
                   >
                     {val == null ? '·' : formatSignedScore(val)}
@@ -132,7 +156,10 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     justifyContent: 'center',
   },
-  currentRoundLabel: { backgroundColor: goldTint.strong, borderColor: colors.gold },
+  currentRoundLabel: {
+    backgroundColor: goldTint.strong,
+    borderColor: colors.gold,
+  },
   roundLabelText: { color: colors.text, fontWeight: '600' },
   currentRoundLabelText: { color: colors.gold, fontWeight: '700' },
   editHint: { color: colors.gold, fontWeight: '700', fontSize: 12 },
@@ -144,7 +171,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  currentCell: { backgroundColor: goldTint.subtle, borderColor: goldTint.border },
+  currentCell: {
+    backgroundColor: goldTint.subtle,
+    borderColor: goldTint.border,
+  },
   cellText: { fontSize: 14, fontWeight: '600' },
   cellEmpty: { color: colors.textDim },
   positive: { color: colors.positive },

@@ -11,7 +11,10 @@ export const CAPOT_POINTS = 250;
 export const BELOTE_REBELOTE_BONUS = 20;
 
 /** Résout l'équipe adverse d'une équipe donnée. */
-export function otherTeam(teams: [BeloteTeam, BeloteTeam], teamId: string): BeloteTeam {
+export function otherTeam(
+  teams: [BeloteTeam, BeloteTeam],
+  teamId: string,
+): BeloteTeam {
   return teams[0].id === teamId ? teams[1] : teams[0];
 }
 
@@ -31,11 +34,16 @@ export function teamRawPoints(
   teamId: string,
 ): number | null {
   if (hand.teamAPoints == null) return null;
-  return teamId === teams[0].id ? hand.teamAPoints : HAND_TOTAL_POINTS - hand.teamAPoints;
+  return teamId === teams[0].id
+    ? hand.teamAPoints
+    : HAND_TOTAL_POINTS - hand.teamAPoints;
 }
 
 /** True si le contrat du preneur est tenu (hors capot, qui suit sa propre règle). */
-export function isContractHeld(teams: [BeloteTeam, BeloteTeam], hand: BeloteHandEntry): boolean {
+export function isContractHeld(
+  teams: [BeloteTeam, BeloteTeam],
+  hand: BeloteHandEntry,
+): boolean {
   const takerPoints = teamRawPoints(teams, hand, hand.takerTeamId);
   return takerPoints != null && takerPoints > CONTRACT_THRESHOLD;
 }
@@ -54,7 +62,8 @@ export function handTeamScores(
 
   if (hand.capotTeamId != null) {
     // Capot : 250 à l'équipe qui a fait toutes les levées, 0 à l'autre.
-    scores[hand.takerTeamId] = hand.capotTeamId === hand.takerTeamId ? CAPOT_POINTS : 0;
+    scores[hand.takerTeamId] =
+      hand.capotTeamId === hand.takerTeamId ? CAPOT_POINTS : 0;
     scores[otherTeamId] = hand.capotTeamId === otherTeamId ? CAPOT_POINTS : 0;
   } else if (isContractHeld(teams, hand)) {
     // Contrat tenu : chacun garde ses points réellement comptés.
@@ -99,7 +108,9 @@ export function winningTeamId(game: BeloteGame): string | null {
   const totals = cumulativeTeamTotals(game);
   const eligible = game.teams.filter((t) => totals[t.id] >= game.targetScore);
   if (eligible.length === 0) return null;
-  return eligible.reduce((best, t) => (totals[t.id] > totals[best.id] ? t : best)).id;
+  return eligible.reduce((best, t) =>
+    totals[t.id] > totals[best.id] ? t : best,
+  ).id;
 }
 
 /** Nom d'affichage d'une équipe : ses deux joueurs séparés par « & ». */

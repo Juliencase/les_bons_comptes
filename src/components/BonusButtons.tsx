@@ -85,7 +85,10 @@ function StepBtn({
       ]}
     >
       <Text
-        style={[styles.btnText, tone === 'pos' ? styles.posText : styles.negText]}
+        style={[
+          styles.btnText,
+          tone === 'pos' ? styles.posText : styles.negText,
+        ]}
       >
         {label}
       </Text>
@@ -104,8 +107,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnNeg: { backgroundColor: 'rgba(239,111,111,0.12)', borderColor: colors.negative },
-  btnPos: { backgroundColor: 'rgba(95,208,138,0.12)', borderColor: colors.positive },
+  btnNeg: {
+    backgroundColor: 'rgba(239,111,111,0.12)',
+    borderColor: colors.negative,
+  },
+  btnPos: {
+    backgroundColor: 'rgba(95,208,138,0.12)',
+    borderColor: colors.positive,
+  },
   btnText: { fontSize: 14, fontWeight: '800' },
   negText: { color: colors.negative },
   posText: { color: colors.positive },

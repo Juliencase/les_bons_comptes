@@ -65,4 +65,3 @@ export const opacity = {
   /** Élément désactivé / non actionnable dans son état courant. */
   disabled: 0.4,
 };
-

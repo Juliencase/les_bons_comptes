@@ -10,6 +10,7 @@ import { Game, GameSetup } from './types';
 // AsyncStorage n'existe pas hors app : le mock officiel du package suffit, le
 // middleware persist tourne alors normalement sans toucher à un module natif.
 jest.mock('@react-native-async-storage/async-storage', () =>
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock factory runs before ESM imports are available
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 
@@ -72,8 +73,10 @@ describe('startGame', () => {
     expect(cumulativeTotal(activeGame(), p1)).toBe(0);
   });
 
-  it('ne traîne pas l\'option boulet de canon en système classique', () => {
-    useStore.getState().startGame('skull-king', ['Alice', 'Bob'], CLASSIC_SETUP);
+  it("ne traîne pas l'option boulet de canon en système classique", () => {
+    useStore
+      .getState()
+      .startGame('skull-king', ['Alice', 'Bob'], CLASSIC_SETUP);
 
     expect(activeGame().scoreSystem).toBe('skull-king');
     expect(activeGame().cannonballRule).toBe(false);
@@ -161,7 +164,7 @@ describe('saisie et validation des manches (Rascal)', () => {
   });
 });
 
-describe('correction d\'une manche', () => {
+describe("correction d'une manche", () => {
   it('revenir à la manche précédente ne perd pas la manche en cours', () => {
     useStore.getState().startGame('skull-king', ['Alice'], CLASSIC_SETUP);
     const [p1] = playerIds();
@@ -266,7 +269,10 @@ describe('reprise et abandon', () => {
     useStore.getState().resumeGame();
     expect(useStore.getState().screen).toBe('round');
 
-    useStore.setState({ game: { ...activeGame(), finishedAt: Date.now() }, screen: 'home' });
+    useStore.setState({
+      game: { ...activeGame(), finishedAt: Date.now() },
+      screen: 'home',
+    });
     useStore.getState().resumeGame();
     expect(useStore.getState().screen).toBe('scoreboard');
   });
@@ -290,7 +296,7 @@ describe('reprise et abandon', () => {
 });
 
 describe('migratePersistedState', () => {
-  it('efface une partie d\'avant les formats (pas de cardsPerRound à reconstituer)', () => {
+  it("efface une partie d'avant les formats (pas de cardsPerRound à reconstituer)", () => {
     const legacy = {
       game: {
         id: 'g0',
@@ -307,7 +313,7 @@ describe('migratePersistedState', () => {
     expect(migratePersistedState(legacy, 0).game).toBeNull();
   });
 
-  it('complète une partie d\'avant le choix du système : classique, sans boulet', () => {
+  it("complète une partie d'avant le choix du système : classique, sans boulet", () => {
     const legacy = {
       game: {
         id: 'g1',
@@ -353,6 +359,8 @@ describe('migratePersistedState', () => {
   });
 
   it('supporte un state sans partie Skull King', () => {
-    expect(migratePersistedState({ game: null, beloteGame: null }, 0).game).toBeNull();
+    expect(
+      migratePersistedState({ game: null, beloteGame: null }, 0).game,
+    ).toBeNull();
   });
 });

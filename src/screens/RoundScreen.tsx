@@ -70,11 +70,23 @@ export default function RoundScreen() {
               onPress={() => setScreen(editMode ? 'scoreboard' : 'home')}
             />
           }
-          title={editMode ? `Modifier la manche ${round}` : `Manche ${round}/${totalRounds}`}
+          title={
+            editMode
+              ? `Modifier la manche ${round}`
+              : `Manche ${round}/${totalRounds}`
+          }
           subtitle={`${cards} carte${cards > 1 ? 's' : ''}${
-            showPotential ? ` · potentiel ${rascalPotential(cards, DEFAULT_BID_KIND)} pts` : ''
+            showPotential
+              ? ` · potentiel ${rascalPotential(cards, DEFAULT_BID_KIND)} pts`
+              : ''
           }`}
-          right={<IconButton icon="📊" label="Voir le tableau des scores" onPress={() => setScreen('scoreboard')} />}
+          right={
+            <IconButton
+              icon="📊"
+              label="Voir le tableau des scores"
+              onPress={() => setScreen('scoreboard')}
+            />
+          }
           bordered
         />
 
@@ -83,7 +95,10 @@ export default function RoundScreen() {
             colors={goldGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            style={[styles.progressFill, { width: `${(round / totalRounds) * 100}%` }]}
+            style={[
+              styles.progressFill,
+              { width: `${(round / totalRounds) * 100}%` },
+            ]}
           />
         </View>
 
@@ -129,7 +144,10 @@ export default function RoundScreen() {
 
         <View style={styles.footer}>
           {editMode ? (
-            <Button label="Retour au tableau des scores" onPress={() => setScreen('scoreboard')} />
+            <Button
+              label="Retour au tableau des scores"
+              onPress={() => setScreen('scoreboard')}
+            />
           ) : (
             <>
               {round > 1 && (

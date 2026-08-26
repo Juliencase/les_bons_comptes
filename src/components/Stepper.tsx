@@ -40,7 +40,12 @@ export default function Stepper({
 
   return (
     <View style={styles.row}>
-      <StepBtn symbol="−" label={decrementLabel} enabled={canDec} onPress={dec} />
+      <StepBtn
+        symbol="−"
+        label={decrementLabel}
+        enabled={canDec}
+        onPress={dec}
+      />
 
       <View style={[styles.valueBox, { borderColor: accent }]}>
         <Text style={[styles.value, value == null && styles.placeholder]}>
@@ -48,7 +53,12 @@ export default function Stepper({
         </Text>
       </View>
 
-      <StepBtn symbol="+" label={incrementLabel} enabled={canInc} onPress={inc} />
+      <StepBtn
+        symbol="+"
+        label={incrementLabel}
+        enabled={canInc}
+        onPress={inc}
+      />
     </View>
   );
 }
@@ -72,7 +82,13 @@ function StepBtn({
       accessibilityLabel={label}
       style={({ pressed }) => [
         styles.btn,
-        { opacity: enabled ? (pressed ? opacity.pressedSubtle : 1) : opacity.disabled },
+        {
+          opacity: enabled
+            ? pressed
+              ? opacity.pressedSubtle
+              : 1
+            : opacity.disabled,
+        },
       ]}
       hitSlop={8}
     >
@@ -91,7 +107,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnText: { color: colors.text, fontSize: 22, fontWeight: '700', lineHeight: 24 },
+  btnText: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: '700',
+    lineHeight: 24,
+  },
   valueBox: {
     minWidth: 46,
     height: 38,

@@ -28,4 +28,3 @@ const styles = StyleSheet.create({
   text: { color: colors.gold, fontSize: 16, fontWeight: '600' },
   pressed: { opacity: opacity.pressed },
 });
-

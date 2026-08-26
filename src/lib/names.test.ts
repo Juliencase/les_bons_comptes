@@ -2,7 +2,7 @@
 import { finalizePlayerNames, joinNames } from './names';
 
 describe('finalizePlayerNames', () => {
-  it('remplace les champs vides par un libellé indexé sans changer l\'ordre', () => {
+  it("remplace les champs vides par un libellé indexé sans changer l'ordre", () => {
     expect(finalizePlayerNames(['Alice', '  ', 'Chloé'], 'Joueur')).toEqual([
       'Alice',
       'Joueur 2',
@@ -26,7 +26,9 @@ describe('joinNames', () => {
 
   it('énumère au-delà de deux : virgules puis « & » pour le dernier', () => {
     expect(joinNames(['Alice', 'Bob', 'Chloé'])).toBe('Alice, Bob & Chloé');
-    expect(joinNames(['Alice', 'Bob', 'Chloé', 'David'])).toBe('Alice, Bob, Chloé & David');
+    expect(joinNames(['Alice', 'Bob', 'Chloé', 'David'])).toBe(
+      'Alice, Bob, Chloé & David',
+    );
   });
 
   it('rend une chaîne vide sans nom (aucun lauréat à afficher)', () => {

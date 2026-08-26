@@ -14,16 +14,27 @@ type Props = {
   circle?: boolean;
 };
 
-export default function IconButton({ icon, label, onPress, tone = 'default', circle }: Props) {
+export default function IconButton({
+  icon,
+  label,
+  onPress,
+  tone = 'default',
+  circle,
+}: Props) {
   return (
     <Pressable
       onPress={onPress}
       hitSlop={10}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={({ pressed }) => [circle && styles.circle, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        circle && styles.circle,
+        pressed && styles.pressed,
+      ]}
     >
-      <Text style={[styles.icon, tone === 'danger' && styles.iconDanger]}>{icon}</Text>
+      <Text style={[styles.icon, tone === 'danger' && styles.iconDanger]}>
+        {icon}
+      </Text>
     </Pressable>
   );
 }

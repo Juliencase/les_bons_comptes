@@ -1,6 +1,13 @@
 // Écran de saisie de la manche courante (Belote).
 import React from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../components/Button';
 import IconButton from '../components/IconButton';
@@ -49,10 +56,13 @@ export default function BeloteRoundScreen() {
   const previewTotals = cumulativeTeamTotals(previewGame);
   const willFinish = winningTeamId(previewGame) != null;
 
-  const takerName = teamName(beloteGame.teams.find((t) => t.id === entry.takerTeamId)!);
+  const takerName = teamName(
+    beloteGame.teams.find((t) => t.id === entry.takerTeamId)!,
+  );
   const defenderName = teamName(otherTeam(beloteGame.teams, entry.takerTeamId));
   const takerPoints = teamRawPoints(beloteGame.teams, entry, entry.takerTeamId);
-  const contractHeld = entry.capotTeamId == null && isContractHeld(beloteGame.teams, entry);
+  const contractHeld =
+    entry.capotTeamId == null && isContractHeld(beloteGame.teams, entry);
   const complete = isHandComplete(entry);
 
   return (
@@ -66,7 +76,9 @@ export default function BeloteRoundScreen() {
             <IconButton
               icon="☰"
               label="Retour à l'accueil"
-              onPress={() => setScreen(editMode ? 'belote-scoreboard' : 'belote-home')}
+              onPress={() =>
+                setScreen(editMode ? 'belote-scoreboard' : 'belote-home')
+              }
             />
           }
           title={editMode ? `Modifier la manche ${hand}` : `Manche ${hand}`}
@@ -81,7 +93,10 @@ export default function BeloteRoundScreen() {
           bordered
         />
 
-        <ScrollView contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.list}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.totalsRow}>
             {beloteGame.teams.map((t) => (
               <View key={t.id} style={styles.totalCard}>
@@ -107,10 +122,12 @@ export default function BeloteRoundScreen() {
 
           {entry.capotTeamId == null && (
             <View style={styles.field}>
-              <Text style={styles.label}>Points comptés (total {HAND_TOTAL_POINTS})</Text>
+              <Text style={styles.label}>
+                Points comptés (total {HAND_TOTAL_POINTS})
+              </Text>
               <Text style={styles.pointsHelp}>
-                Saisis le camp le plus simple à compter — l'autre se déduit automatiquement.
-                Nom en or = équipe preneuse.
+                Saisis le camp le plus simple à compter — l&apos;autre se déduit
+                automatiquement. Nom en or = équipe preneuse.
               </Text>
               <View style={styles.pointsRow}>
                 {beloteGame.teams.map((t, i) => {
@@ -121,7 +138,10 @@ export default function BeloteRoundScreen() {
                       {i > 0 && <Text style={styles.pointsSeparator}>/</Text>}
                       <View style={styles.pointsCol}>
                         <Text
-                          style={[styles.pointsColLabel, isTaker && styles.pointsColLabelTaker]}
+                          style={[
+                            styles.pointsColLabel,
+                            isTaker && styles.pointsColLabelTaker,
+                          ]}
                           numberOfLines={1}
                         >
                           {name}
@@ -139,12 +159,16 @@ export default function BeloteRoundScreen() {
                 })}
               </View>
               {takerPoints == null ? (
-                <Text style={styles.pointsHelp}>Saisis les points pour voir le résultat.</Text>
+                <Text style={styles.pointsHelp}>
+                  Saisis les points pour voir le résultat.
+                </Text>
               ) : (
                 <Text
                   style={[
                     styles.contractHint,
-                    contractHeld ? styles.contractHeldHint : styles.contractFailedHint,
+                    contractHeld
+                      ? styles.contractHeldHint
+                      : styles.contractFailedHint,
                   ]}
                 >
                   {contractHeld
@@ -191,14 +215,18 @@ export default function BeloteRoundScreen() {
                 return (
                   <View key={t.id} style={styles.previewRow}>
                     <Text style={styles.previewName}>{teamName(t)}</Text>
-                    <Text style={styles.previewDelta}>{formatSignedScore(delta)}</Text>
-                    <Text style={styles.previewTotal}>{previewTotals[t.id]} pts</Text>
+                    <Text style={styles.previewDelta}>
+                      {formatSignedScore(delta)}
+                    </Text>
+                    <Text style={styles.previewTotal}>
+                      {previewTotals[t.id]} pts
+                    </Text>
                   </View>
                 );
               })
             ) : (
               <Text style={styles.pointsHelp}>
-                Saisis les points (ou un capot) pour voir l'aperçu.
+                Saisis les points (ou un capot) pour voir l&apos;aperçu.
               </Text>
             )}
           </View>
@@ -220,7 +248,9 @@ export default function BeloteRoundScreen() {
                 />
               )}
               <Button
-                label={willFinish ? 'Terminer la partie' : 'Valider la manche ›'}
+                label={
+                  willFinish ? 'Terminer la partie' : 'Valider la manche ›'
+                }
                 onPress={commitBeloteHand}
                 disabled={!complete}
               />
@@ -247,7 +277,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   totalName: { color: colors.text, fontSize: 13, fontWeight: '700' },
-  totalScore: { color: colors.gold, fontSize: 20, fontWeight: '800', marginTop: spacing.xs },
+  totalScore: {
+    color: colors.gold,
+    fontSize: 20,
+    fontWeight: '800',
+    marginTop: spacing.xs,
+  },
   field: { gap: spacing.sm },
   label: {
     color: colors.textDim,
@@ -282,7 +317,12 @@ const styles = StyleSheet.create({
   },
   previewRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   previewName: { flex: 1, color: colors.text, fontSize: 14, fontWeight: '600' },
-  previewDelta: { color: colors.gold, fontSize: 14, fontWeight: '700', width: 48 },
+  previewDelta: {
+    color: colors.gold,
+    fontSize: 14,
+    fontWeight: '700',
+    width: 48,
+  },
   previewTotal: { color: colors.text, fontSize: 14, fontWeight: '700' },
   footer: {
     padding: spacing.lg,

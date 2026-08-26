@@ -25,7 +25,10 @@ import { colors, radius, spacing } from '../theme';
 const activeGame = getGame('belote');
 
 const TARGET_SCORES = [500, 1000, 1500, 2000];
-const TARGET_SCORE_OPTIONS = TARGET_SCORES.map((s) => ({ key: String(s), label: `${s} pts` }));
+const TARGET_SCORE_OPTIONS = TARGET_SCORES.map((s) => ({
+  key: String(s),
+  label: `${s} pts`,
+}));
 const DEFAULT_TARGET_SCORE = TARGET_SCORES[0];
 
 export default function BeloteSetupScreen() {
@@ -36,7 +39,9 @@ export default function BeloteSetupScreen() {
 
   const [teamAPlayers, setTeamAPlayers] = useState(['', '']);
   const [teamBPlayers, setTeamBPlayers] = useState(['', '']);
-  const [targetScoreKey, setTargetScoreKey] = useState(String(DEFAULT_TARGET_SCORE));
+  const [targetScoreKey, setTargetScoreKey] = useState(
+    String(DEFAULT_TARGET_SCORE),
+  );
 
   const setPlayer = (team: 'A' | 'B', i: number, v: string) => {
     const setter = team === 'A' ? setTeamAPlayers : setTeamBPlayers;
@@ -65,7 +70,12 @@ export default function BeloteSetupScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScreenHeader
-          left={<BackButton label="Retour" onPress={() => setScreen('belote-home')} />}
+          left={
+            <BackButton
+              label="Retour"
+              onPress={() => setScreen('belote-home')}
+            />
+          }
           title="Les équipes"
           subtitle={`${playerRange(activeGame)} joueurs en 2 équipes`}
         />
@@ -79,7 +89,10 @@ export default function BeloteSetupScreen() {
           />
         </View>
 
-        <ScrollView contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.list}
+          keyboardShouldPersistTaps="handled"
+        >
           <TeamFields
             label="Équipe A"
             players={teamAPlayers}

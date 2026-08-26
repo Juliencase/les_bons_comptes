@@ -13,7 +13,12 @@ type Props = {
   variant?: Variant;
 };
 
-export default function Button({ label, onPress, disabled, variant = 'primary' }: Props) {
+export default function Button({
+  label,
+  onPress,
+  disabled,
+  variant = 'primary',
+}: Props) {
   const content = (
     <Text style={[styles.text, variantStyles[variant].text]}>{label}</Text>
   );

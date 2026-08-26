@@ -23,7 +23,9 @@ export function getGame(key: string): GameDef {
 }
 
 /** Formatte l'effectif d'un jeu ("4" si min===max, sinon "2-8"). */
-export function playerRange(g: Pick<GameDef, 'minPlayers' | 'maxPlayers'>): string {
+export function playerRange(
+  g: Pick<GameDef, 'minPlayers' | 'maxPlayers'>,
+): string {
   return g.minPlayers === g.maxPlayers
     ? `${g.minPlayers}`
     : `${g.minPlayers}-${g.maxPlayers}`;

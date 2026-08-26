@@ -18,12 +18,24 @@ function makeId(prefix: string): string {
 
 /** Entrée d'une manche future : non jouée → ne compte pas dans les totaux. */
 function emptyEntry(): RoundEntry {
-  return { bid: null, tricks: null, bonus: 0, bidKind: DEFAULT_BID_KIND, validated: false };
+  return {
+    bid: null,
+    tricks: null,
+    bonus: 0,
+    bidKind: DEFAULT_BID_KIND,
+    validated: false,
+  };
 }
 
 /** Entrée d'une manche atteinte : démarre à 0 (pas besoin de cliquer pour un 0). */
 function zeroEntry(): RoundEntry {
-  return { bid: 0, tricks: 0, bonus: 0, bidKind: DEFAULT_BID_KIND, validated: false };
+  return {
+    bid: 0,
+    tricks: 0,
+    bonus: 0,
+    bidKind: DEFAULT_BID_KIND,
+    validated: false,
+  };
 }
 
 /** Initialise à 0 les entrées d'une manche encore vierges (sans écraser l'existant). */
@@ -80,7 +92,10 @@ function defaultHand(teams: [BeloteTeam, BeloteTeam]): BeloteHandEntry {
   };
 }
 
-function createBeloteGame(teams: [BeloteTeam, BeloteTeam], targetScore: number): BeloteGame {
+function createBeloteGame(
+  teams: [BeloteTeam, BeloteTeam],
+  targetScore: number,
+): BeloteGame {
   return {
     id: makeId('bg'),
     gameKey: 'belote',
@@ -154,10 +169,17 @@ type Actions = {
   setBidKind: (round: number, playerId: string, kind: BidKind) => void;
   commitRound: () => void;
   goToRound: (round: number) => void;
-  startBeloteGame: (teams: [BeloteTeam, BeloteTeam], targetScore: number) => void;
+  startBeloteGame: (
+    teams: [BeloteTeam, BeloteTeam],
+    targetScore: number,
+  ) => void;
   resumeBeloteGame: () => void;
   setHandTaker: (hand: number, teamId: string) => void;
-  setHandTeamPoints: (hand: number, teamId: string, points: number | null) => void;
+  setHandTeamPoints: (
+    hand: number,
+    teamId: string,
+    points: number | null,
+  ) => void;
   setHandCapot: (hand: number, teamId: string | null) => void;
   setHandBeloteRebelote: (hand: number, teamId: string | null) => void;
   commitBeloteHand: () => void;
@@ -238,7 +260,10 @@ export const useStore = create<State & Actions>()(
       },
 
       startBeloteGame: (teams, targetScore) => {
-        set({ beloteGame: createBeloteGame(teams, targetScore), screen: 'belote-round' });
+        set({
+          beloteGame: createBeloteGame(teams, targetScore),
+          screen: 'belote-round',
+        });
       },
 
       resumeBeloteGame: () => {
@@ -258,7 +283,11 @@ export const useStore = create<State & Actions>()(
           // valeurs sont liées (teamAPoints / 162 - teamAPoints), il n'existe pas d'état
           // où l'une est vide et l'autre non.
           const teamAPoints =
-            points == null ? null : teamId === g.teams[0].id ? points : HAND_TOTAL_POINTS - points;
+            points == null
+              ? null
+              : teamId === g.teams[0].id
+                ? points
+                : HAND_TOTAL_POINTS - points;
           return updateHand(state, hand, { teamAPoints });
         }),
 
@@ -266,7 +295,9 @@ export const useStore = create<State & Actions>()(
         set((state) => updateHand(state, hand, { capotTeamId: teamId })),
 
       setHandBeloteRebelote: (hand, teamId) =>
-        set((state) => updateHand(state, hand, { beloteRebeloteTeamId: teamId })),
+        set((state) =>
+          updateHand(state, hand, { beloteRebeloteTeamId: teamId }),
+        ),
 
       commitBeloteHand: () => {
         const g = get().beloteGame;
@@ -303,14 +334,20 @@ export const useStore = create<State & Actions>()(
         const g = get().beloteGame;
         if (!g) return;
         const clamped = Math.min(Math.max(hand, 1), g.currentHand);
-        set({ beloteGame: { ...g, currentHand: clamped }, screen: 'belote-round' });
+        set({
+          beloteGame: { ...g, currentHand: clamped },
+          screen: 'belote-round',
+        });
       },
     }),
     {
       name: 'skullking-store',
       storage: createJSONStorage(() => AsyncStorage),
       // On ne persiste que les parties, pas l'écran courant ni l'état d'hydratation.
-      partialize: (state) => ({ game: state.game, beloteGame: state.beloteGame }),
+      partialize: (state) => ({
+        game: state.game,
+        beloteGame: state.beloteGame,
+      }),
       onRehydrateStorage: () => (state, error) => {
         // Sans ce garde-fou, un storage corrompu ou une migration qui jette
         // laisserait `hydrated` à false — et l'app bloquée sur son spinner

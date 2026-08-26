@@ -116,7 +116,11 @@ export function cumulativeTotal(game: Game, playerId: string): number {
   for (let r = 1; r <= game.cardsPerRound.length; r++) {
     const entry = game.rounds[r]?.[playerId];
     if (entry?.validated && isEntryComplete(entry)) {
-      sum += roundTotal(entry, cardsForRound(game.cardsPerRound, r), game.scoreSystem);
+      sum += roundTotal(
+        entry,
+        cardsForRound(game.cardsPerRound, r),
+        game.scoreSystem,
+      );
     }
   }
   return sum;
@@ -134,7 +138,7 @@ export function cumulativeTotals(game: Game): Record<string, number> {
 /** Classement décroissant : [{ playerId, total, rank }]. Gère les ex æquo. */
 export function ranking(
   game: Game,
-): Array<{ playerId: string; total: number; rank: number }> {
+): { playerId: string; total: number; rank: number }[] {
   const totals = cumulativeTotals(game);
   const sorted = game.players
     .map((p) => ({ playerId: p.id, total: totals[p.id] }))

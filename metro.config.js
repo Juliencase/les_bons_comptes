@@ -24,8 +24,12 @@ const config = getDefaultConfig(__dirname);
 const ZUSTAND_DIR = path.join(__dirname, 'node_modules', 'zustand');
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
-  if (platform === 'web' && (moduleName === 'zustand' || moduleName.startsWith('zustand/'))) {
-    const subpath = moduleName === 'zustand' ? 'index' : moduleName.slice('zustand/'.length);
+  if (
+    platform === 'web' &&
+    (moduleName === 'zustand' || moduleName.startsWith('zustand/'))
+  ) {
+    const subpath =
+      moduleName === 'zustand' ? 'index' : moduleName.slice('zustand/'.length);
     const filePath = path.join(ZUSTAND_DIR, `${subpath}.js`);
     if (fs.existsSync(filePath)) {
       return { type: 'sourceFile', filePath };

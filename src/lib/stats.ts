@@ -46,7 +46,8 @@ export function playerStats(game: Game): PlayerStats[] {
 
     for (let round = 1; round <= game.cardsPerRound.length; round++) {
       const entry = game.rounds[round]?.[player.id];
-      if (!entry?.validated || entry.bid == null || entry.tricks == null) continue;
+      if (!entry?.validated || entry.bid == null || entry.tricks == null)
+        continue;
 
       const { bid, tricks } = entry;
       const bonus = entry.bonus ?? 0;
@@ -163,7 +164,8 @@ const AWARD_DEFS: AwardDef[] = [
     emoji: '👻',
     title: 'Le Fantôme',
     value: (s) => s.emptyRounds,
-    detail: (s) => `${s.emptyRounds} manche${plur(s.emptyRounds)} sans le moindre pli`,
+    detail: (s) =>
+      `${s.emptyRounds} manche${plur(s.emptyRounds)} sans le moindre pli`,
   },
 ];
 

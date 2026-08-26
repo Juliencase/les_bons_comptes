@@ -63,7 +63,9 @@ describe('isHandComplete', () => {
   });
 
   it('complète si un capot est déclaré, même sans points saisis', () => {
-    expect(isHandComplete(makeHand({ teamAPoints: null, capotTeamId: teamA.id }))).toBe(true);
+    expect(
+      isHandComplete(makeHand({ teamAPoints: null, capotTeamId: teamA.id })),
+    ).toBe(true);
   });
 });
 
@@ -74,28 +76,42 @@ describe('teamRawPoints', () => {
     expect(teamRawPoints(teams, hand, teamB.id)).toBe(62);
   });
 
-  it("retourne null tant que les points ne sont pas saisis", () => {
+  it('retourne null tant que les points ne sont pas saisis', () => {
     const hand = makeHand({ teamAPoints: null });
     expect(teamRawPoints(teams, hand, teamA.id)).toBeNull();
     expect(teamRawPoints(teams, hand, teamB.id)).toBeNull();
   });
 
-  it("ne dépend pas de qui est preneur : changer le preneur ne change aucun score compté", () => {
+  it('ne dépend pas de qui est preneur : changer le preneur ne change aucun score compté', () => {
     const hand = makeHand({ teamAPoints: 100, takerTeamId: teamA.id });
     const pointsBefore = {
       a: teamRawPoints(teams, hand, teamA.id),
       b: teamRawPoints(teams, hand, teamB.id),
     };
     const handWithOtherTaker = { ...hand, takerTeamId: teamB.id };
-    expect(teamRawPoints(teams, handWithOtherTaker, teamA.id)).toBe(pointsBefore.a);
-    expect(teamRawPoints(teams, handWithOtherTaker, teamB.id)).toBe(pointsBefore.b);
+    expect(teamRawPoints(teams, handWithOtherTaker, teamA.id)).toBe(
+      pointsBefore.a,
+    );
+    expect(teamRawPoints(teams, handWithOtherTaker, teamB.id)).toBe(
+      pointsBefore.b,
+    );
   });
 });
 
 describe('isContractHeld', () => {
   it('tenu si le preneur a strictement plus de 81 points', () => {
-    expect(isContractHeld(teams, makeHand({ takerTeamId: teamA.id, teamAPoints: 82 }))).toBe(true);
-    expect(isContractHeld(teams, makeHand({ takerTeamId: teamA.id, teamAPoints: 81 }))).toBe(false);
+    expect(
+      isContractHeld(
+        teams,
+        makeHand({ takerTeamId: teamA.id, teamAPoints: 82 }),
+      ),
+    ).toBe(true);
+    expect(
+      isContractHeld(
+        teams,
+        makeHand({ takerTeamId: teamA.id, teamAPoints: 81 }),
+      ),
+    ).toBe(false);
   });
 
   it('se réévalue correctement selon quelle équipe est preneuse', () => {
@@ -108,31 +124,57 @@ describe('isContractHeld', () => {
 describe('handTeamScores', () => {
   it('contrat tenu : chacun garde ses points réellement comptés', () => {
     const hand = makeHand({ teamAPoints: 100 });
-    expect(handTeamScores(teams, hand)).toEqual({ [teamA.id]: 100, [teamB.id]: 62 });
+    expect(handTeamScores(teams, hand)).toEqual({
+      [teamA.id]: 100,
+      [teamB.id]: 62,
+    });
   });
 
   it('chute (points preneur <= 81) : les 162 points vont au défenseur', () => {
     const hand = makeHand({ takerTeamId: teamA.id, teamAPoints: 81 });
-    expect(handTeamScores(teams, hand)).toEqual({ [teamA.id]: 0, [teamB.id]: 162 });
+    expect(handTeamScores(teams, hand)).toEqual({
+      [teamA.id]: 0,
+      [teamB.id]: 162,
+    });
   });
 
   it('capot du preneur : 250 pour lui, 0 pour le défenseur', () => {
-    const hand = makeHand({ takerTeamId: teamA.id, teamAPoints: 162, capotTeamId: teamA.id });
-    expect(handTeamScores(teams, hand)).toEqual({ [teamA.id]: 250, [teamB.id]: 0 });
+    const hand = makeHand({
+      takerTeamId: teamA.id,
+      teamAPoints: 162,
+      capotTeamId: teamA.id,
+    });
+    expect(handTeamScores(teams, hand)).toEqual({
+      [teamA.id]: 250,
+      [teamB.id]: 0,
+    });
   });
 
   it('capot du défenseur : 250 pour lui, 0 pour le preneur', () => {
-    const hand = makeHand({ takerTeamId: teamA.id, teamAPoints: 0, capotTeamId: teamB.id });
-    expect(handTeamScores(teams, hand)).toEqual({ [teamA.id]: 0, [teamB.id]: 250 });
+    const hand = makeHand({
+      takerTeamId: teamA.id,
+      teamAPoints: 0,
+      capotTeamId: teamB.id,
+    });
+    expect(handTeamScores(teams, hand)).toEqual({
+      [teamA.id]: 0,
+      [teamB.id]: 250,
+    });
   });
 
-  it("changer le preneur seul (sans toucher aux points comptés) peut faire basculer contrat/chute", () => {
+  it('changer le preneur seul (sans toucher aux points comptés) peut faire basculer contrat/chute', () => {
     // A a 100, B a 62. A preneur avec 100 > 81 : contrat tenu.
     const heldByA = makeHand({ takerTeamId: teamA.id, teamAPoints: 100 });
-    expect(handTeamScores(teams, heldByA)).toEqual({ [teamA.id]: 100, [teamB.id]: 62 });
+    expect(handTeamScores(teams, heldByA)).toEqual({
+      [teamA.id]: 100,
+      [teamB.id]: 62,
+    });
     // Même comptage, mais B preneur : B n'a que 62 <= 81 → chute, A empoche tout.
     const heldByB = { ...heldByA, takerTeamId: teamB.id };
-    expect(handTeamScores(teams, heldByB)).toEqual({ [teamA.id]: 162, [teamB.id]: 0 });
+    expect(handTeamScores(teams, heldByB)).toEqual({
+      [teamA.id]: 162,
+      [teamB.id]: 0,
+    });
   });
 });
 
@@ -140,14 +182,25 @@ describe('cumulativeTeamTotals', () => {
   it('ne compte que les manches validées', () => {
     const game = makeGame({
       hands: {
-        1: makeHand({ takerTeamId: teamA.id, teamAPoints: 100, validated: true }), // A:100 B:62
-        2: makeHand({ takerTeamId: teamB.id, teamAPoints: 90, validated: false }), // ignorée
+        1: makeHand({
+          takerTeamId: teamA.id,
+          teamAPoints: 100,
+          validated: true,
+        }), // A:100 B:62
+        2: makeHand({
+          takerTeamId: teamB.id,
+          teamAPoints: 90,
+          validated: false,
+        }), // ignorée
       },
     });
-    expect(cumulativeTeamTotals(game)).toEqual({ [teamA.id]: 100, [teamB.id]: 62 });
+    expect(cumulativeTeamTotals(game)).toEqual({
+      [teamA.id]: 100,
+      [teamB.id]: 62,
+    });
   });
 
-  it('ajoute le bonus Belote-Rebelote à l\'équipe qui l\'a annoncée', () => {
+  it("ajoute le bonus Belote-Rebelote à l'équipe qui l'a annoncée", () => {
     const game = makeGame({
       hands: {
         1: makeHand({
@@ -166,18 +219,30 @@ describe('cumulativeTeamTotals', () => {
 });
 
 describe('winningTeamId', () => {
-  it('retourne null tant qu\'aucune équipe n\'a atteint le score cible', () => {
+  it("retourne null tant qu'aucune équipe n'a atteint le score cible", () => {
     const game = makeGame({
       targetScore: 500,
-      hands: { 1: makeHand({ takerTeamId: teamA.id, teamAPoints: 100, validated: true }) },
+      hands: {
+        1: makeHand({
+          takerTeamId: teamA.id,
+          teamAPoints: 100,
+          validated: true,
+        }),
+      },
     });
     expect(winningTeamId(game)).toBeNull();
   });
 
-  it('retourne l\'équipe qui a atteint ou dépassé le score cible', () => {
+  it("retourne l'équipe qui a atteint ou dépassé le score cible", () => {
     const game = makeGame({
       targetScore: 150,
-      hands: { 1: makeHand({ takerTeamId: teamA.id, teamAPoints: 160, validated: true }) },
+      hands: {
+        1: makeHand({
+          takerTeamId: teamA.id,
+          teamAPoints: 160,
+          validated: true,
+        }),
+      },
     });
     expect(winningTeamId(game)).toBe(teamA.id);
   });
@@ -189,12 +254,27 @@ describe('winningTeamId', () => {
     const game = makeGame({
       targetScore: 300,
       hands: {
-        1: makeHand({ capotTeamId: teamA.id, teamAPoints: null, validated: true }), // A+=250, B+=0
-        2: makeHand({ capotTeamId: teamB.id, teamAPoints: null, validated: true }), // A+=0, B+=250
-        3: makeHand({ takerTeamId: teamB.id, teamAPoints: 62, validated: true }), // A+=62, B+=100
+        1: makeHand({
+          capotTeamId: teamA.id,
+          teamAPoints: null,
+          validated: true,
+        }), // A+=250, B+=0
+        2: makeHand({
+          capotTeamId: teamB.id,
+          teamAPoints: null,
+          validated: true,
+        }), // A+=0, B+=250
+        3: makeHand({
+          takerTeamId: teamB.id,
+          teamAPoints: 62,
+          validated: true,
+        }), // A+=62, B+=100
       },
     });
-    expect(cumulativeTeamTotals(game)).toEqual({ [teamA.id]: 312, [teamB.id]: 350 });
+    expect(cumulativeTeamTotals(game)).toEqual({
+      [teamA.id]: 312,
+      [teamB.id]: 350,
+    });
     expect(winningTeamId(game)).toBe(teamB.id);
   });
 });

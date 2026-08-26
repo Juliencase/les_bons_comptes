@@ -64,7 +64,11 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
   },
-  hero: { alignItems: 'center', marginTop: spacing.xl, marginBottom: spacing.xxl },
+  hero: {
+    alignItems: 'center',
+    marginTop: spacing.xl,
+    marginBottom: spacing.xxl,
+  },
   title: {
     color: colors.gold,
     fontFamily: fonts.display,

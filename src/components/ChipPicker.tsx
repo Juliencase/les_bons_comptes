@@ -38,9 +38,13 @@ export default function ChipPicker({ options, selectedKey, onSelect }: Props) {
               pressed && styles.pressed,
             ]}
           >
-            <Text style={[styles.label, selected && styles.labelSelected]}>{opt.label}</Text>
+            <Text style={[styles.label, selected && styles.labelSelected]}>
+              {opt.label}
+            </Text>
             {opt.sublabel != null && (
-              <Text style={[styles.sublabel, selected && styles.sublabelSelected]}>
+              <Text
+                style={[styles.sublabel, selected && styles.sublabelSelected]}
+              >
                 {opt.sublabel}
               </Text>
             )}

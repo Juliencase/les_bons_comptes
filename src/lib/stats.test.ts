@@ -69,8 +69,18 @@ describe('playerStats', () => {
       bonusGained: 0,
       malusTaken: 5,
     });
-    expect(byId.p2).toMatchObject({ tricks: 0, emptyRounds: 3, exactBids: 2, bonusGained: 20 });
-    expect(byId.p3).toMatchObject({ tricks: 3, nearMisses: 3, bonusGained: 10, malusTaken: 15 });
+    expect(byId.p2).toMatchObject({
+      tricks: 0,
+      emptyRounds: 3,
+      exactBids: 2,
+      bonusGained: 20,
+    });
+    expect(byId.p3).toMatchObject({
+      tricks: 3,
+      nearMisses: 3,
+      bonusGained: 10,
+      malusTaken: 15,
+    });
   });
 
   it('ignore les manches non validées ou incomplètes', () => {
@@ -85,7 +95,12 @@ describe('playerStats', () => {
     });
 
     const [alice] = playerStats(game);
-    expect(alice).toMatchObject({ roundsPlayed: 1, tricks: 1, exactBids: 1, bonusGained: 10 });
+    expect(alice).toMatchObject({
+      roundsPlayed: 1,
+      tricks: 1,
+      exactBids: 1,
+      bonusGained: 10,
+    });
   });
 
   it('ne compte le malus que sur les manches à bonus négatif', () => {
@@ -96,7 +111,10 @@ describe('playerStats', () => {
       rounds: { 1: { p1: { bid: 1, tricks: 1, bonus: 15, validated: true } } },
     });
 
-    expect(playerStats(game)[0]).toMatchObject({ bonusGained: 15, malusTaken: 0 });
+    expect(playerStats(game)[0]).toMatchObject({
+      bonusGained: 15,
+      malusTaken: 0,
+    });
   });
 });
 
@@ -171,7 +189,9 @@ describe('awards', () => {
 
     const list = awards(game);
     expect(awardOf(list, 'loup-de-mer')?.detail).toBe('1 pli remporté');
-    expect(awardOf(list, 'presque')?.detail).toBe('1 manche ratée à un pli près');
+    expect(awardOf(list, 'presque')?.detail).toBe(
+      '1 manche ratée à un pli près',
+    );
   });
 
   it('ne décerne rien quand personne ne se distingue', () => {
@@ -212,7 +232,9 @@ describe('awards', () => {
 
     const list = awards(game);
     expect(awardOf(list, 'maudit')).toBeUndefined();
-    expect(awardOf(list, 'chasseur-tresor')).toMatchObject({ playerIds: ['p2'] });
+    expect(awardOf(list, 'chasseur-tresor')).toMatchObject({
+      playerIds: ['p2'],
+    });
   });
 
   it('ne décerne aucun titre sur une partie vierge', () => {
@@ -221,10 +243,17 @@ describe('awards', () => {
 
   it('laisse un même joueur cumuler plusieurs titres', () => {
     const list = awards(referenceGame());
-    const bobTitles = list.filter((a) => a.playerIds.includes('p2')).map((a) => a.key);
+    const bobTitles = list
+      .filter((a) => a.playerIds.includes('p2'))
+      .map((a) => a.key);
 
     expect(bobTitles).toEqual(
-      expect.arrayContaining(['marin-eau-douce', 'parieur-fou', 'chasseur-tresor', 'fantome']),
+      expect.arrayContaining([
+        'marin-eau-douce',
+        'parieur-fou',
+        'chasseur-tresor',
+        'fantome',
+      ]),
     );
   });
 });
@@ -288,8 +317,20 @@ describe('bonus selon le système de score', () => {
       rounds: {
         1: {
           // raté d'un seul pli : en boulet, tout est perdu
-          p1: { bid: 2, tricks: 3, bonus: 30, validated: true, bidKind: 'boulet' },
-          p2: { bid: 2, tricks: 2, bonus: 30, validated: true, bidKind: 'boulet' },
+          p1: {
+            bid: 2,
+            tricks: 3,
+            bonus: 30,
+            validated: true,
+            bidKind: 'boulet',
+          },
+          p2: {
+            bid: 2,
+            tricks: 2,
+            bonus: 30,
+            validated: true,
+            bidKind: 'boulet',
+          },
           p3: { bid: 1, tricks: 1, bonus: 0, validated: true },
         },
       },

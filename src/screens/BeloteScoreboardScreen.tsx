@@ -20,7 +20,9 @@ export default function BeloteScoreboardScreen() {
 
   const finished = !!beloteGame.finishedAt;
   const totals = cumulativeTeamTotals(beloteGame);
-  const sortedTeams = [...beloteGame.teams].sort((a, b) => totals[b.id] - totals[a.id]);
+  const sortedTeams = [...beloteGame.teams].sort(
+    (a, b) => totals[b.id] - totals[a.id],
+  );
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -29,7 +31,9 @@ export default function BeloteScoreboardScreen() {
           <BackButton
             label={finished ? 'Accueil' : 'Retour'}
             onPress={() =>
-              finished ? setScreen('belote-home') : goToBeloteHand(beloteGame.currentHand)
+              finished
+                ? setScreen('belote-home')
+                : goToBeloteHand(beloteGame.currentHand)
             }
           />
         }
@@ -58,14 +62,22 @@ export default function BeloteScoreboardScreen() {
 
         <Text style={styles.sectionTitle}>Détail des manches</Text>
         {finished && (
-          <Text style={styles.editHint}>Touche une manche pour corriger un score.</Text>
+          <Text style={styles.editHint}>
+            Touche une manche pour corriger un score.
+          </Text>
         )}
-        <BeloteHandTable game={beloteGame} onHandPress={finished ? goToBeloteHand : undefined} />
+        <BeloteHandTable
+          game={beloteGame}
+          onHandPress={finished ? goToBeloteHand : undefined}
+        />
       </ScrollView>
 
       <View style={styles.footer}>
         {finished ? (
-          <Button label="Nouvelle partie" onPress={() => setScreen('belote-setup')} />
+          <Button
+            label="Nouvelle partie"
+            onPress={() => setScreen('belote-setup')}
+          />
         ) : (
           <Button
             label={`Reprendre la saisie (manche ${beloteGame.currentHand})`}
@@ -91,7 +103,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   totalName: { color: colors.text, fontSize: 13, fontWeight: '700' },
-  totalScore: { color: colors.gold, fontSize: 20, fontWeight: '800', marginTop: spacing.xs },
+  totalScore: {
+    color: colors.gold,
+    fontSize: 20,
+    fontWeight: '800',
+    marginTop: spacing.xs,
+  },
   sectionTitle: {
     color: colors.textDim,
     fontSize: 14,
@@ -99,7 +116,12 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  editHint: { color: colors.textDim, fontSize: 12, fontStyle: 'italic', marginTop: -spacing.sm },
+  editHint: {
+    color: colors.textDim,
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginTop: -spacing.sm,
+  },
   footer: {
     padding: spacing.lg,
     borderTopWidth: 1,

@@ -23,7 +23,12 @@ export default function RankingList({ rows }: { rows: RankingRow[] }) {
           <Text style={styles.name} numberOfLines={1}>
             {row.name}
           </Text>
-          <Text style={[styles.score, row.total >= 0 ? styles.positive : styles.negative]}>
+          <Text
+            style={[
+              styles.score,
+              row.total >= 0 ? styles.positive : styles.negative,
+            ]}
+          >
             {row.total}
           </Text>
         </View>

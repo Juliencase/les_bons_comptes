@@ -2,7 +2,14 @@
 // (nouvelle partie / reprendre / tableau des scores) et footer. Store/navigation-agnostic —
 // HomeScreen (Skull King) et BeloteHomeScreen (Belote) lui passent leurs données et callbacks.
 import React from 'react';
-import { Image, ImageSourcePropType, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import {
+  Image,
+  ImageSourcePropType,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BackButton from './BackButton';
 import Button from './Button';
@@ -57,7 +64,10 @@ export default function GameHomeScreen({
         <View style={styles.hero}>
           <Image
             source={image}
-            style={[styles.gameImage, { width: imageWidth, height: imageHeight }]}
+            style={[
+              styles.gameImage,
+              { width: imageWidth, height: imageHeight },
+            ]}
             resizeMode="contain"
           />
           <Text style={styles.title}>{title}</Text>
@@ -79,11 +89,19 @@ export default function GameHomeScreen({
           <Button label="Nouvelle partie" onPress={onNewGame} />
 
           {resumeLabel != null && onResume != null && (
-            <Button variant="secondary" label={resumeLabel} onPress={onResume} />
+            <Button
+              variant="secondary"
+              label={resumeLabel}
+              onPress={onResume}
+            />
           )}
 
           {showScoreboard && (
-            <Button variant="ghost" label={scoreboardLabel} onPress={onScoreboard} />
+            <Button
+              variant="ghost"
+              label={scoreboardLabel}
+              onPress={onScoreboard}
+            />
           )}
         </View>
 

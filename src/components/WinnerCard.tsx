@@ -45,6 +45,11 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   // Plusieurs vainqueurs ex æquo tiennent sur plusieurs lignes : on centre.
-  name: { color: colors.gold, fontSize: 26, fontWeight: '800', textAlign: 'center' },
+  name: {
+    color: colors.gold,
+    fontSize: 26,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
   score: { color: colors.text, fontSize: 18, fontWeight: '700' },
 });

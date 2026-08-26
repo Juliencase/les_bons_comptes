@@ -13,7 +13,13 @@ type Props = {
   bordered?: boolean;
 };
 
-export default function ScreenHeader({ left, title, subtitle, right, bordered }: Props) {
+export default function ScreenHeader({
+  left,
+  title,
+  subtitle,
+  right,
+  bordered,
+}: Props) {
   return (
     <View style={[styles.header, bordered && styles.bordered]}>
       <View style={[styles.side, styles.sideLeft]}>{left}</View>
