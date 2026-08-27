@@ -1,5 +1,5 @@
 // Tests du palmarès de fin de partie (titres décernés sur les manches validées).
-import { Award, AwardKey, awards, playerStats } from './stats';
+import { Award, AwardKey, awards, playerStats, unawardedTitles } from './stats';
 import { Game } from './types';
 
 function makeGame(overrides?: Partial<Game>): Game {
@@ -213,6 +213,32 @@ describe('awards', () => {
     expect(awards(game)).toEqual([]);
   });
 
+  it('liste les 7 titres comme non décernés quand personne ne se distingue', () => {
+    const game = makeGame({
+      players: [
+        { id: 'p1', name: 'Alice' },
+        { id: 'p2', name: 'Bob' },
+      ],
+      cardsPerRound: [2],
+      rounds: {
+        1: {
+          p1: { bid: 1, tricks: 1, bonus: 0, validated: true },
+          p2: { bid: 1, tricks: 1, bonus: 0, validated: true },
+        },
+      },
+    });
+
+    expect(unawardedTitles(game).map((t) => t.key)).toEqual([
+      'loup-de-mer',
+      'marin-eau-douce',
+      'parieur-fou',
+      'presque',
+      'chasseur-tresor',
+      'maudit',
+      'fantome',
+    ]);
+  });
+
   it('saute les titres à zéro : pas de Maudit sans malus', () => {
     const game = makeGame({
       cardsPerRound: [2, 2],
@@ -235,6 +261,10 @@ describe('awards', () => {
     expect(awardOf(list, 'chasseur-tresor')).toMatchObject({
       playerIds: ['p2'],
     });
+    expect(unawardedTitles(game).map((t) => t.key)).toContain('maudit');
+    expect(unawardedTitles(game).map((t) => t.key)).not.toContain(
+      'chasseur-tresor',
+    );
   });
 
   it('ne décerne aucun titre sur une partie vierge', () => {

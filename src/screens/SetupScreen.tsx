@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,26 +13,24 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import BackButton from '../components/BackButton';
 import Button from '../components/Button';
 import ChipPicker, { ChipOption } from '../components/ChipPicker';
-import IconButton from '../components/IconButton';
+import ScreenBackground from '../components/ScreenBackground';
 import ScreenHeader from '../components/ScreenHeader';
 import SectionTitle from '../components/SectionTitle';
-import { confirmOverwriteGame } from '../lib/confirm';
+import ToggleRow from '../components/ToggleRow';
 import { DEFAULT_FORMAT_KEY, FORMATS, getFormat } from '../lib/formats';
-import { getGame, playerRange } from '../lib/games';
+import { getGame } from '../lib/games';
 import { finalizePlayerNames } from '../lib/names';
 import {
   BID_KINDS,
   DEFAULT_SCORE_SYSTEM,
-  getScoreSystem,
   SCORE_SYSTEMS,
 } from '../lib/scoreSystems';
 import { useStore } from '../lib/store';
 import { ScoreSystem } from '../lib/types';
-import { colors, goldGradient, radius, spacing } from '../theme';
+import { alpha, colors, fonts } from '../theme';
 
 // Seul Skull King est implémenté pour l'instant — cf. CLAUDE.md.
 const activeGame = getGame('skull-king');
@@ -41,25 +40,11 @@ const [CHEVROTINE, BOULET] = BID_KINDS;
 const FORMAT_OPTIONS: ChipOption[] = FORMATS.map((f) => ({
   key: f.key,
   label: f.name,
-  sublabel: `${f.cardsPerRound.length} manche${f.cardsPerRound.length > 1 ? 's' : ''}`,
 }));
-const SYSTEM_OPTIONS: ChipOption[] = SCORE_SYSTEMS.map((s) => ({
-  key: s.key,
-  label: s.name,
-  sublabel: s.tagline,
-}));
-// Option Rascal « Boulet de canon » : chaque joueur choisit alors son type de
-// mise à chaque manche (cf. docs/REGLES_SKULL_KING.md §4.B).
-const CANNONBALL_OPTIONS: ChipOption[] = [
-  { key: 'off', label: 'Chevrotine seule', sublabel: 'règle de base' },
-  { key: 'on', label: '+ Boulet de canon', sublabel: 'option risquée' },
-];
 
 export default function SetupScreen() {
-  const game = useStore((s) => s.game);
   const setScreen = useStore((s) => s.setScreen);
   const startGame = useStore((s) => s.startGame);
-  const hasUnfinishedGame = !!game && !game.finishedAt;
 
   const [names, setNames] = useState<string[]>(() =>
     Array(MIN_PLAYERS).fill(''),
@@ -84,188 +69,289 @@ export default function SetupScreen() {
   const canStart = filled.length >= MIN_PLAYERS;
 
   const format = getFormat(formatKey);
-  const system = getScoreSystem(systemKey);
   const isRascal = systemKey === 'rascal';
 
   const start = () => {
     const finalNames = finalizePlayerNames(names, 'Joueur');
-    const setup = {
+    startGame(activeGame.key, finalNames, {
       cardsPerRound: format.cardsPerRound,
       scoreSystem: systemKey,
       // L'option n'a de sens qu'en Rascal : on ne la traîne pas en classique.
       cannonballRule: isRascal && cannonballRule,
-    };
-    if (hasUnfinishedGame) {
-      confirmOverwriteGame(() => startGame(activeGame.key, finalNames, setup));
-      return;
-    }
-    startGame(activeGame.key, finalNames, setup);
+    });
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScreenHeader
-          left={<BackButton label="Retour" onPress={() => setScreen('home')} />}
-          title="La partie"
-          subtitle={`${playerRange(activeGame)} joueurs${
-            activeGame.duration ? ` · ~${activeGame.duration} min` : ''
-          }`}
-        />
-
-        <ScrollView
-          contentContainerStyle={styles.body}
-          keyboardShouldPersistTaps="handled"
+    <ScreenBackground>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <View style={styles.section}>
-            <SectionTitle>Les joueurs</SectionTitle>
-            <View style={styles.list}>
-              {names.map((name, i) => (
-                <View key={i} style={styles.rowItem}>
-                  <LinearGradient colors={goldGradient} style={styles.avatar}>
-                    <Text style={styles.index}>{i + 1}</Text>
-                  </LinearGradient>
-                  <TextInput
-                    style={styles.input}
-                    value={name}
-                    placeholder={`Joueur ${i + 1}`}
-                    placeholderTextColor={colors.textDim}
-                    onChangeText={(t) => setName(i, t)}
-                    maxLength={16}
-                    returnKeyType="done"
-                  />
-                  {names.length > MIN_PLAYERS && (
-                    <IconButton
-                      icon="✕"
-                      label={`Supprimer le joueur ${i + 1}`}
-                      tone="danger"
-                      circle
-                      onPress={() => removePlayer(i)}
+          <View style={styles.container}>
+            <ScreenHeader
+              left={
+                <BackButton
+                  label="Skull King"
+                  onPress={() => setScreen('home')}
+                />
+              }
+            />
+            <Text style={styles.title}>Nouvelle partie</Text>
+
+            <ScrollView
+              contentContainerStyle={styles.body}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.section}>
+                <View style={styles.sectionHead}>
+                  <SectionTitle index="01">Joueurs</SectionTitle>
+                  <Text style={styles.sectionMeta}>
+                    {names.length} / {MAX_PLAYERS}
+                  </Text>
+                </View>
+                <View style={styles.list}>
+                  {names.map((name, i) => (
+                    <View key={i} style={styles.rowItem}>
+                      <Text style={styles.index}>{i + 1}</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={name}
+                        placeholder={`Joueur ${i + 1}`}
+                        placeholderTextColor={alpha.creme(0.35)}
+                        onChangeText={(t) => setName(i, t)}
+                        maxLength={16}
+                        returnKeyType="done"
+                      />
+                      {names.length > MIN_PLAYERS && (
+                        <Pressable
+                          onPress={() => removePlayer(i)}
+                          hitSlop={10}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Supprimer le joueur ${i + 1}`}
+                          style={({ pressed }) => [
+                            styles.removeBtn,
+                            pressed && styles.removeBtnPressed,
+                          ]}
+                        >
+                          <Text style={styles.removeText}>✕</Text>
+                        </Pressable>
+                      )}
+                    </View>
+                  ))}
+
+                  {names.length < MAX_PLAYERS && (
+                    <Button
+                      variant="dashed"
+                      label="+ Ajouter un joueur"
+                      onPress={addPlayer}
                     />
                   )}
                 </View>
-              ))}
+              </View>
 
-              {names.length < MAX_PLAYERS && (
-                <Button
-                  variant="dashed"
-                  label="+ Ajouter un joueur"
-                  onPress={addPlayer}
+              <View style={styles.section}>
+                <SectionTitle index="02">Format de partie</SectionTitle>
+                <ChipPicker
+                  options={FORMAT_OPTIONS}
+                  selectedKey={formatKey}
+                  onSelect={setFormatKey}
                 />
-              )}
+                <View style={styles.cardsBox}>
+                  <Text style={styles.cardsLabel}>Cartes</Text>
+                  <Text style={styles.cardsValue}>
+                    {format.cardsPerRound.join(' · ')}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.section}>
+                <SectionTitle index="03">Système de score</SectionTitle>
+                <View style={styles.systems}>
+                  {SCORE_SYSTEMS.map((s) => {
+                    const selected = s.key === systemKey;
+                    return (
+                      <Pressable
+                        key={s.key}
+                        onPress={() => setSystemKey(s.key)}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected }}
+                        style={[
+                          styles.systemCard,
+                          selected && styles.systemCardSelected,
+                        ]}
+                      >
+                        <View style={styles.systemHead}>
+                          <Text style={styles.systemName}>{s.name}</Text>
+                          <View
+                            style={[
+                              styles.radio,
+                              selected && styles.radioSelected,
+                            ]}
+                          />
+                        </View>
+                        <Text style={styles.systemDescription}>
+                          {s.description}
+                        </Text>
+
+                        {s.key === 'rascal' && selected && (
+                          <ToggleRow
+                            title="Boulet de canon"
+                            subtitle={`${BOULET.hint}. Sinon : ${CHEVROTINE.hint}.`}
+                            value={cannonballRule}
+                            onChange={setCannonballRule}
+                          />
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            </ScrollView>
+
+            <View style={styles.footer}>
+              <Text style={styles.hint}>
+                {/* Une ligne laissée vide donne quand même un joueur (« Joueur 3 »,
+                    cf. finalizePlayerNames) : on compte les lignes, pas les noms saisis. */}
+                {canStart
+                  ? `${names.length} joueurs · ${format.cardsPerRound.length} manches`
+                  : `Au moins ${MIN_PLAYERS} joueurs`}
+              </Text>
+              <Button
+                label="Distribuer la manche 01"
+                disabled={!canStart}
+                onPress={start}
+              />
             </View>
           </View>
-
-          <View style={styles.section}>
-            <SectionTitle>Format de partie</SectionTitle>
-            <ChipPicker
-              options={FORMAT_OPTIONS}
-              selectedKey={formatKey}
-              onSelect={setFormatKey}
-            />
-            <Text style={styles.description}>{format.description}</Text>
-            <Text style={styles.accent}>
-              Cartes par manche : {format.cardsPerRound.join(', ')}
-            </Text>
-          </View>
-
-          <View style={styles.section}>
-            <SectionTitle>Système de score</SectionTitle>
-            <ChipPicker
-              options={SYSTEM_OPTIONS}
-              selectedKey={systemKey}
-              onSelect={(key) => setSystemKey(key as ScoreSystem)}
-            />
-            <Text style={styles.description}>{system.description}</Text>
-
-            {isRascal && (
-              <View style={styles.subSection}>
-                <SectionTitle>Type de mise</SectionTitle>
-                <ChipPicker
-                  options={CANNONBALL_OPTIONS}
-                  selectedKey={cannonballRule ? 'on' : 'off'}
-                  onSelect={(key) => setCannonballRule(key === 'on')}
-                />
-                <Text style={styles.description}>
-                  {cannonballRule
-                    ? `À chaque manche, chaque joueur choisit en plus son type de mise — ${CHEVROTINE.name} (${CHEVROTINE.hint}) ou ${BOULET.name} (${BOULET.hint}).`
-                    : `Tout le monde joue la règle Rascal habituelle : ${CHEVROTINE.hint}.`}
-                </Text>
-              </View>
-            )}
-          </View>
-        </ScrollView>
-
-        <View style={styles.footer}>
-          <Text style={styles.hint}>
-            {/* Une ligne laissée vide donne quand même un joueur (« Joueur 3 »,
-                cf. finalizePlayerNames) : on compte les lignes, pas les noms saisis. */}
-            {canStart
-              ? `${names.length} joueur${names.length > 1 ? 's' : ''} · ${format.cardsPerRound.length} manche${format.cardsPerRound.length > 1 ? 's' : ''} · système ${system.name}`
-              : `Au moins ${MIN_PLAYERS} joueurs`}
-          </Text>
-          <Button
-            label="Commencer la partie"
-            disabled={!canStart}
-            onPress={start}
-          />
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1 },
   flex: { flex: 1 },
-  body: { padding: spacing.lg, gap: spacing.xl },
-  section: { gap: spacing.xs },
-  subSection: { marginTop: spacing.md, gap: spacing.xs },
-  description: {
-    color: colors.textDim,
-    fontSize: 12,
-    lineHeight: 17,
-    marginTop: spacing.xs,
+  container: { flex: 1, paddingHorizontal: 22 },
+  title: {
+    fontFamily: fonts.displayBlack,
+    fontSize: 46,
+    lineHeight: Math.round(46 * 0.86),
+    textTransform: 'uppercase',
+    color: colors.creme,
+    marginTop: 14,
   },
-  accent: {
-    color: colors.gold,
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: spacing.xs,
+  body: { paddingVertical: 22, gap: 22 },
+  section: { gap: 10 },
+  sectionHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
   },
-  list: { gap: spacing.md, marginTop: spacing.xs },
-  rowItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  avatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  sectionMeta: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    color: alpha.creme(0.45),
+  },
+  list: { gap: 5 },
+  rowItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: alpha.creme(0.14),
+    paddingLeft: 12,
+    paddingRight: 6,
   },
   index: {
-    color: colors.bg,
-    fontWeight: '800',
-    fontSize: 13,
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    color: alpha.creme(0.4),
+    width: 16,
   },
   input: {
     flex: 1,
     height: 50,
-    borderRadius: radius.md,
+    fontFamily: fonts.displaySemiBold,
+    fontSize: 26,
+    textTransform: 'uppercase',
+    color: colors.creme,
+    padding: 0,
+  },
+  removeBtn: {
+    minWidth: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removeBtnPressed: {},
+  removeText: {
+    fontFamily: fonts.mono,
+    fontSize: 14,
+    color: alpha.creme(0.45),
+  },
+  cardsBox: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-    color: colors.text,
-    paddingHorizontal: spacing.md,
-    fontSize: 16,
+    borderColor: alpha.creme(0.14),
   },
-  footer: {
-    padding: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    gap: spacing.sm,
+  cardsLabel: {
+    fontFamily: fonts.monoMedium,
+    fontSize: 9,
+    letterSpacing: 9 * 0.16,
+    textTransform: 'uppercase',
+    color: alpha.creme(0.45),
   },
-  hint: { color: colors.textDim, textAlign: 'center', fontSize: 13 },
+  cardsValue: {
+    fontFamily: fonts.displaySemiBold,
+    fontSize: 22,
+    letterSpacing: 22 * 0.06,
+    color: colors.creme,
+    fontVariant: ['tabular-nums'],
+  },
+  systems: { gap: 6 },
+  systemCard: { borderWidth: 1, borderColor: alpha.creme(0.22), padding: 14 },
+  systemCardSelected: {
+    borderColor: colors.sanguine,
+    backgroundColor: alpha.sanguine(0.07),
+  },
+  systemHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  systemName: {
+    fontFamily: fonts.displayBlack,
+    fontSize: 26,
+    lineHeight: 26,
+    textTransform: 'uppercase',
+    color: colors.creme,
+  },
+  radio: {
+    width: 18,
+    height: 18,
+    borderWidth: 1,
+    borderColor: alpha.creme(0.4),
+  },
+  radioSelected: { backgroundColor: colors.sanguine, borderWidth: 0 },
+  systemDescription: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    lineHeight: 15,
+    color: alpha.creme(0.5),
+    marginTop: 7,
+  },
+  footer: { paddingVertical: 18, gap: 8 },
+  hint: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    color: alpha.creme(0.45),
+    textAlign: 'center',
+  },
 });

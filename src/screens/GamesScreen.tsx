@@ -3,94 +3,124 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import GameCard from '../components/GameCard';
+import ScreenBackground from '../components/ScreenBackground';
 import { GAMES } from '../lib/games';
 import { useStore } from '../lib/store';
-import { colors, contentMaxWidth, fonts, spacing } from '../theme';
+import { alpha, colors, contentMaxWidth, fonts } from '../theme';
 
 export default function GamesScreen() {
   const setScreen = useStore((s) => s.setScreen);
   const game = useStore((s) => s.game);
   const beloteGame = useStore((s) => s.beloteGame);
-  const inProgressKeys = new Set(
+  const inProgress = new Map(
     [
-      game && !game.finishedAt ? game.gameKey : null,
-      beloteGame && !beloteGame.finishedAt ? beloteGame.gameKey : null,
-    ].filter((k): k is string => k != null),
+      game && !game.finishedAt
+        ? ([game.gameKey, game.currentRound] as const)
+        : null,
+      beloteGame && !beloteGame.finishedAt
+        ? ([beloteGame.gameKey, beloteGame.currentHand] as const)
+        : null,
+    ].filter((e): e is readonly [string, number] => e != null),
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <LinearGradient
-        colors={[colors.bgAlt, colors.bg]}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.hero}>
-          <Text style={styles.title}>LES BONS COMPTES</Text>
-          <Text style={styles.subtitle}>« Font les bonnes parties »</Text>
-        </View>
+    <ScreenBackground>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <ScrollView contentContainerStyle={styles.container}>
+          <View style={styles.hero}>
+            <Text style={styles.title}>
+              Les bons{'\n'}
+              <Text style={styles.titleAccent}>comptes</Text>
+            </Text>
+            <Text style={styles.subtitle}>
+              Posez l&apos;appareil au centre de la table. Il tient les comptes,
+              vous jouez.
+            </Text>
+          </View>
 
-        <Text style={styles.sectionTitle}>Choisis un jeu</Text>
+          <View style={styles.list}>
+            {GAMES.map((g) => (
+              <GameCard
+                key={g.key}
+                name={g.name}
+                tagline={g.tagline}
+                minPlayers={g.minPlayers}
+                maxPlayers={g.maxPlayers}
+                durationMin={g.duration}
+                available={g.available}
+                badgeLabel={
+                  inProgress.has(g.key)
+                    ? `En cours · manche ${String(inProgress.get(g.key)).padStart(2, '0')}`
+                    : undefined
+                }
+                onPress={() => g.screen && setScreen(g.screen)}
+              />
+            ))}
+          </View>
 
-        <View style={styles.grid}>
-          {GAMES.map((g) => (
-            <GameCard
-              key={g.key}
-              emoji={g.emoji}
-              image={g.image}
-              name={g.name}
-              minPlayers={g.minPlayers}
-              maxPlayers={g.maxPlayers}
-              available={g.available}
-              badgeLabel={inProgressKeys.has(g.key) ? 'En cours' : undefined}
-              onPress={() => g.screen && setScreen(g.screen)}
-            />
-          ))}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+          {inProgress.size === 0 && (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>Aucune partie en cours</Text>
+              <Text style={styles.emptyText}>
+                Choisissez un jeu pour commencer. Tout reste sur cet appareil :
+                ni compte, ni connexion, ni historique au-delà de la dernière
+                partie.
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1 },
   container: {
-    padding: spacing.xl,
-    paddingBottom: spacing.xxl,
+    padding: 22,
+    paddingTop: 26,
+    paddingBottom: 26,
+    gap: 22,
     maxWidth: contentMaxWidth,
     width: '100%',
     alignSelf: 'center',
   },
-  hero: {
-    alignItems: 'center',
-    marginTop: spacing.xl,
-    marginBottom: spacing.xxl,
-  },
+  hero: { gap: 12 },
   title: {
-    color: colors.gold,
-    fontFamily: fonts.display,
-    fontSize: 24,
-    letterSpacing: 0.5,
-    textAlign: 'center',
-  },
-  subtitle: {
-    color: colors.textDim,
-    fontSize: 11,
-    marginTop: spacing.xs,
-    fontStyle: 'italic',
-    textAlign: 'center',
-    opacity: 0.65,
-  },
-  sectionTitle: {
-    color: colors.textDim,
-    fontSize: 12,
-    fontWeight: '700',
+    fontFamily: fonts.displayBlack,
+    fontSize: 58,
+    lineHeight: Math.round(58 * 0.82),
     textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: spacing.md,
+    color: colors.creme,
   },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  titleAccent: { color: colors.sanguine },
+  subtitle: {
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    lineHeight: 18,
+    color: alpha.creme(0.55),
+    maxWidth: 320,
+  },
+  list: { gap: 8 },
+  emptyState: {
+    borderTopWidth: 1,
+    borderTopColor: alpha.creme(0.16),
+    paddingTop: 16,
+  },
+  emptyTitle: {
+    fontFamily: fonts.displaySemiBold,
+    fontSize: 22,
+    lineHeight: Math.round(22 * 1.1),
+    letterSpacing: 22 * 0.03,
+    textTransform: 'uppercase',
+    color: colors.creme,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    lineHeight: 17,
+    color: alpha.creme(0.5),
+  },
 });

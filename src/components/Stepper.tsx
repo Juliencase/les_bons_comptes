@@ -1,7 +1,7 @@
-// Sélecteur d'entier borné avec boutons - / +.
+// Sélecteur d'entier borné avec boutons − / + (charte-da.md §06, cadre 62 px).
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, opacity, radius, spacing } from '../theme';
+import { alpha, colors, fonts, opacity } from '../theme';
 
 type Props = {
   value: number | null;
@@ -9,6 +9,7 @@ type Props = {
   max: number;
   onChange: (value: number) => void;
   placeholder?: string;
+  /** Couleur de la valeur affichée — sanguine (mise) ou paille (plis) selon le champ. */
   accent?: string;
   /** Libellés d'accessibilité des boutons − / + (ex. "Diminuer la mise"). */
   decrementLabel?: string;
@@ -21,7 +22,7 @@ export default function Stepper({
   max,
   onChange,
   placeholder = '—',
-  accent = colors.gold,
+  accent = colors.sanguine,
   decrementLabel = 'Diminuer',
   incrementLabel = 'Augmenter',
 }: Props) {
@@ -39,25 +40,31 @@ export default function Stepper({
   };
 
   return (
-    <View style={styles.row}>
+    <View style={styles.frame}>
       <StepBtn
         symbol="−"
         label={decrementLabel}
         enabled={canDec}
         onPress={dec}
+        side="right"
       />
-
-      <View style={[styles.valueBox, { borderColor: accent }]}>
-        <Text style={[styles.value, value == null && styles.placeholder]}>
+      <View style={styles.valueBox}>
+        <Text
+          style={[
+            styles.value,
+            { color: accent },
+            value == null && styles.placeholder,
+          ]}
+        >
           {value == null ? placeholder : value}
         </Text>
       </View>
-
       <StepBtn
         symbol="+"
         label={incrementLabel}
         enabled={canInc}
         onPress={inc}
+        side="left"
       />
     </View>
   );
@@ -68,11 +75,13 @@ function StepBtn({
   label,
   enabled,
   onPress,
+  side,
 }: {
   symbol: string;
   label: string;
   enabled: boolean;
   onPress: () => void;
+  side: 'left' | 'right';
 }) {
   return (
     <Pressable
@@ -82,15 +91,10 @@ function StepBtn({
       accessibilityLabel={label}
       style={({ pressed }) => [
         styles.btn,
-        {
-          opacity: enabled
-            ? pressed
-              ? opacity.pressedSubtle
-              : 1
-            : opacity.disabled,
-        },
+        side === 'right' ? styles.borderRight : styles.borderLeft,
+        enabled && pressed && styles.btnPressed,
+        !enabled && styles.disabled,
       ]}
-      hitSlop={8}
     >
       <Text style={styles.btnText}>{symbol}</Text>
     </Pressable>
@@ -98,32 +102,34 @@ function StepBtn({
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center' },
+  frame: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    borderWidth: 1,
+    borderColor: alpha.creme(0.24),
+  },
   btn: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.sm,
-    backgroundColor: colors.cardAlt,
+    width: 62,
+    height: 62,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  borderRight: { borderRightWidth: 1, borderRightColor: alpha.creme(0.24) },
+  borderLeft: { borderLeftWidth: 1, borderLeftColor: alpha.creme(0.24) },
+  btnPressed: { backgroundColor: alpha.creme(0.08) },
+  disabled: { opacity: opacity.disabled },
   btnText: {
-    color: colors.text,
-    fontSize: 22,
-    fontWeight: '700',
-    lineHeight: 24,
+    color: colors.creme,
+    fontFamily: fonts.displaySemiBold,
+    fontSize: 30,
+    lineHeight: 30,
   },
-  valueBox: {
-    minWidth: 46,
-    height: 38,
-    marginHorizontal: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radius.sm,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.bgAlt,
+  valueBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  value: {
+    fontFamily: fonts.displayBlack,
+    fontSize: 42,
+    lineHeight: 42,
+    fontVariant: ['tabular-nums'],
   },
-  value: { color: colors.text, fontSize: 18, fontWeight: '700' },
-  placeholder: { color: colors.textDim, fontWeight: '400' },
+  placeholder: { color: alpha.creme(0.35) },
 });

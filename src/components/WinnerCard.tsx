@@ -1,55 +1,98 @@
-// Encart mettant en avant le vainqueur d'une partie terminée.
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { colors, radius, spacing } from '../theme';
+// Encart mettant en avant le vainqueur d'une partie terminée (charte, maquette
+// 9c). Fin de partie (§07) : s'imprime en 600 ms, sans rebond.
+import React, { useEffect, useRef } from 'react';
+import { Animated, Platform, StyleSheet, Text, View } from 'react-native';
+import AnimatedNumber from './AnimatedNumber';
+import { alpha, colors, fonts } from '../theme';
+import { useReducedMotion } from '../lib/reducedMotion';
 
 type Props = {
   label: string;
   name: string;
   score: number;
+  /** Ligne de détail optionnelle (ex. « +135 sur Mathilde · 26 plis remportés »). */
+  detail?: string;
 };
 
-export default function WinnerCard({ label, name, score }: Props) {
+export default function WinnerCard({ label, name, score, detail }: Props) {
+  const reducedMotion = useReducedMotion();
+  const anim = useRef(new Animated.Value(reducedMotion ? 1 : 0)).current;
+
+  useEffect(() => {
+    if (reducedMotion) return;
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 600,
+      easing: (t) => 1 - Math.pow(1 - t, 3),
+      useNativeDriver: Platform.OS !== 'web',
+    }).start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
-    <View style={styles.glow}>
-      <LinearGradient colors={[colors.card, '#183742']} style={styles.card}>
+    <Animated.View
+      style={{
+        opacity: anim,
+        transform: [
+          {
+            scale: anim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0.96, 1],
+            }),
+          },
+        ],
+      }}
+    >
+      <View style={styles.card}>
         <Text style={styles.label}>{label}</Text>
-        <Text style={styles.name}>🏴‍☠️ {name}</Text>
-        <Text style={styles.score}>{score} points</Text>
-      </LinearGradient>
-    </View>
+        <View style={styles.row}>
+          <Text style={styles.name} numberOfLines={1}>
+            {name}
+          </Text>
+          <AnimatedNumber value={score} style={styles.score} duration={600} />
+        </View>
+        {detail != null && <Text style={styles.detail}>{detail}</Text>}
+      </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  glow: {
-    borderRadius: radius.lg + 4,
-    shadowColor: colors.gold,
-    shadowOpacity: 0.2,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  card: {
-    borderRadius: radius.lg + 4,
-    borderWidth: 1.5,
-    borderColor: colors.gold,
-    padding: spacing.xl,
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
+  card: { borderWidth: 1, borderColor: colors.sanguine, padding: 18 },
   label: {
-    color: colors.textDim,
-    fontSize: 13,
+    fontFamily: fonts.monoMedium,
+    fontSize: 9,
+    letterSpacing: 9 * 0.18,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    color: colors.sanguine,
+    marginBottom: 10,
   },
-  // Plusieurs vainqueurs ex æquo tiennent sur plusieurs lignes : on centre.
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    gap: 10,
+  },
   name: {
-    color: colors.gold,
-    fontSize: 26,
-    fontWeight: '800',
-    textAlign: 'center',
+    flexShrink: 1,
+    fontFamily: fonts.displayBlack,
+    fontSize: 52,
+    lineHeight: Math.round(52 * 0.86),
+    textTransform: 'uppercase',
+    color: colors.creme,
   },
-  score: { color: colors.text, fontSize: 18, fontWeight: '700' },
+  score: {
+    fontFamily: fonts.displayBlack,
+    fontSize: 46,
+    lineHeight: 46,
+    color: colors.paille,
+    fontVariant: ['tabular-nums'],
+  },
+  detail: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    lineHeight: 15,
+    color: alpha.creme(0.55),
+    marginTop: 10,
+  },
 });

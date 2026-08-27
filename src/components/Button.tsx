@@ -1,10 +1,9 @@
-// Bouton d'action générique (3 variantes visuelles) — agnostique, piloté par props.
+// Bouton d'action générique (charte-da.md §06) — agnostique, piloté par props.
 import React from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { colors, goldGradient, opacity, radius, spacing } from '../theme';
+import { alpha, colors, fonts, opacity, spacing } from '../theme';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'dashed';
+type Variant = 'primary' | 'secondary' | 'destructive' | 'dashed';
 
 type Props = {
   label: string;
@@ -19,25 +18,6 @@ export default function Button({
   disabled,
   variant = 'primary',
 }: Props) {
-  const content = (
-    <Text style={[styles.text, variantStyles[variant].text]}>{label}</Text>
-  );
-
-  if (variant === 'primary' && !disabled) {
-    return (
-      <Pressable
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityState={{ disabled: false }}
-        style={({ pressed }) => pressed && styles.pressed}
-      >
-        <LinearGradient colors={goldGradient} style={styles.base}>
-          {content}
-        </LinearGradient>
-      </Pressable>
-    );
-  }
-
   return (
     <Pressable
       onPress={onPress}
@@ -47,50 +27,78 @@ export default function Button({
       style={({ pressed }) => [
         styles.base,
         variantStyles[variant].container,
+        pressed && !disabled && variantStyles[variant].pressedContainer,
         disabled && styles.disabled,
-        pressed && !disabled && styles.pressed,
       ]}
     >
-      {content}
+      {({ pressed }) => (
+        <Text
+          style={[
+            styles.text,
+            variantStyles[variant].text,
+            pressed && !disabled && variantStyles[variant].pressedText,
+          ]}
+        >
+          {label}
+        </Text>
+      )}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   base: {
-    paddingVertical: spacing.lg,
-    borderRadius: radius.md,
+    paddingVertical: spacing.s18,
     alignItems: 'center',
   },
-  text: { fontSize: 18, fontWeight: '800' },
+  text: {
+    fontFamily: fonts.displayBlack,
+    fontSize: 24,
+    letterSpacing: 24 * 0.05,
+    textTransform: 'uppercase',
+  },
   disabled: { opacity: opacity.disabled },
-  pressed: { opacity: opacity.pressed },
 });
 
 const variantStyles = {
   primary: StyleSheet.create({
-    container: { backgroundColor: colors.gold },
-    text: { color: colors.bg },
+    container: { backgroundColor: colors.sanguine },
+    pressedContainer: { backgroundColor: colors.sanguineHover },
+    text: { color: colors.fond },
+    pressedText: {},
   }),
   secondary: StyleSheet.create({
     container: {
-      backgroundColor: colors.cardAlt,
+      backgroundColor: 'transparent',
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: alpha.creme(0.32),
     },
-    text: { color: colors.text, fontSize: 16, fontWeight: '700' },
+    pressedContainer: { borderColor: colors.creme },
+    text: { color: colors.creme },
+    pressedText: {},
   }),
-  ghost: StyleSheet.create({
-    container: { paddingVertical: spacing.md },
-    text: { color: colors.textDim, fontSize: 15, fontWeight: '600' },
+  destructive: StyleSheet.create({
+    container: {
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderColor: alpha.grenat(0.5),
+    },
+    pressedContainer: {
+      backgroundColor: colors.grenat,
+      borderColor: colors.grenat,
+    },
+    text: { color: colors.grenat },
+    pressedText: { color: colors.fond },
   }),
   dashed: StyleSheet.create({
     container: {
-      paddingVertical: spacing.md,
+      backgroundColor: 'transparent',
       borderWidth: 1,
-      borderColor: colors.border,
       borderStyle: 'dashed',
+      borderColor: alpha.creme(0.24),
     },
-    text: { color: colors.textDim, fontSize: 15, fontWeight: '600' },
+    pressedContainer: { borderColor: colors.sanguine, borderStyle: 'dashed' },
+    text: { color: alpha.creme(0.6), fontSize: 15, letterSpacing: 15 * 0.12 },
+    pressedText: { color: colors.sanguine },
   }),
 };

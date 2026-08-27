@@ -80,11 +80,15 @@ export type AwardKey =
   | 'maudit'
   | 'fantome';
 
+/** Tonalité d'affichage du titre (filet gauche paille/grenat/creme, charte §06). */
+export type AwardTone = 'good' | 'bad' | 'neutral';
+
 /** Un titre décerné en fin de partie. */
 export type Award = {
   key: AwardKey;
   emoji: string;
   title: string;
+  tone: AwardTone;
   /** Le ou les lauréats — plusieurs en cas d'ex æquo. */
   playerIds: string[];
   /** Le chiffre qui justifie le titre, déjà mis en forme. */
@@ -98,6 +102,7 @@ type AwardDef = {
   key: AwardKey;
   emoji: string;
   title: string;
+  tone: AwardTone;
   /** Valeur classante du titre. */
   value: (s: PlayerStats) => number;
   /** Par défaut on décerne au maximum ; 'min' décerne au minimum. */
@@ -115,6 +120,7 @@ const AWARD_DEFS: AwardDef[] = [
     key: 'loup-de-mer',
     emoji: '🐺',
     title: 'Le Loup de mer',
+    tone: 'good',
     value: (s) => s.tricks,
     detail: (s) => `${s.tricks} pli${plur(s.tricks)} remporté${plur(s.tricks)}`,
   },
@@ -122,6 +128,7 @@ const AWARD_DEFS: AwardDef[] = [
     key: 'marin-eau-douce',
     emoji: '🦆',
     title: "Le Marin d'eau douce",
+    tone: 'neutral',
     value: (s) => s.tricks,
     mode: 'min',
     detail: (s) =>
@@ -133,6 +140,7 @@ const AWARD_DEFS: AwardDef[] = [
     key: 'parieur-fou',
     emoji: '🎯',
     title: 'Le Parieur fou',
+    tone: 'good',
     value: (s) => s.exactBids,
     detail: (s) =>
       `${s.exactBids} mise${plur(s.exactBids)} exacte${plur(s.exactBids)} sur ${s.roundsPlayed}`,
@@ -141,6 +149,7 @@ const AWARD_DEFS: AwardDef[] = [
     key: 'presque',
     emoji: '😬',
     title: 'Le Presque',
+    tone: 'neutral',
     value: (s) => s.nearMisses,
     detail: (s) =>
       `${s.nearMisses} manche${plur(s.nearMisses)} ratée${plur(s.nearMisses)} à un pli près`,
@@ -149,6 +158,7 @@ const AWARD_DEFS: AwardDef[] = [
     key: 'chasseur-tresor',
     emoji: '💰',
     title: 'Le Chasseur de trésor',
+    tone: 'good',
     value: (s) => s.bonusGained,
     detail: (s) => `+${s.bonusGained} pts de bonus`,
   },
@@ -156,6 +166,7 @@ const AWARD_DEFS: AwardDef[] = [
     key: 'maudit',
     emoji: '☠️',
     title: 'Le Maudit',
+    tone: 'bad',
     value: (s) => s.malusTaken,
     detail: (s) => `-${s.malusTaken} pts de malus`,
   },
@@ -163,6 +174,7 @@ const AWARD_DEFS: AwardDef[] = [
     key: 'fantome',
     emoji: '👻',
     title: 'Le Fantôme',
+    tone: 'neutral',
     value: (s) => s.emptyRounds,
     detail: (s) =>
       `${s.emptyRounds} manche${plur(s.emptyRounds)} sans le moindre pli`,
@@ -188,6 +200,7 @@ function resolveAward(def: AwardDef, stats: PlayerStats[]): Award | null {
     key: def.key,
     emoji: def.emoji,
     title: def.title,
+    tone: def.tone,
     playerIds: winners.map((w) => w.playerId),
     detail: def.detail(winners[0]),
   };
@@ -198,5 +211,20 @@ export function awards(game: Game): Award[] {
   const stats = playerStats(game);
   return AWARD_DEFS.map((def) => resolveAward(def, stats)).filter(
     (award): award is Award => award !== null,
+  );
+}
+
+/**
+ * Les titres qu'aucun joueur ne mérite plus qu'un autre (tout le monde à
+ * égalité, ou personne ne dépasse le seuil) — affichés en creux sous le
+ * palmarès (maquette 9c : « Le Presque et Le Chasseur de trésor n'ont pas été
+ * décernés : personne ne s'est détaché. »).
+ */
+export function unawardedTitles(
+  game: Game,
+): { key: AwardKey; title: string }[] {
+  const stats = playerStats(game);
+  return AWARD_DEFS.filter((def) => resolveAward(def, stats) === null).map(
+    (def) => ({ key: def.key, title: def.title }),
   );
 }

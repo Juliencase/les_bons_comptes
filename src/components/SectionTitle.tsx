@@ -1,23 +1,28 @@
-// Libellé de section en petites majuscules espacées (ex. au-dessus d'un ChipPicker).
+// Libellé de section, sanguine, avec numérotation optionnelle (« 01 · Joueurs »).
 import React from 'react';
 import { StyleSheet, Text } from 'react-native';
-import { colors, spacing } from '../theme';
+import { colors, fonts } from '../theme';
 
 type Props = {
+  index?: string;
   children: string;
 };
 
-export default function SectionTitle({ children }: Props) {
-  return <Text style={styles.title}>{children}</Text>;
+export default function SectionTitle({ index, children }: Props) {
+  return (
+    <Text style={styles.title}>
+      {index != null ? `${index} · ${children}` : children}
+    </Text>
+  );
 }
 
 const styles = StyleSheet.create({
   title: {
-    color: colors.textDim,
-    fontSize: 12,
-    fontWeight: '700',
+    fontFamily: fonts.monoMedium,
+    fontSize: 9,
+    letterSpacing: 9 * 0.18,
     textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: spacing.sm,
+    color: colors.sanguine,
+    marginBottom: 10,
   },
 });

@@ -1,9 +1,10 @@
 // Sélecteur exclusif à 2 options (+ « aucune » optionnelle) — agnostique, piloté
-// par props. Utilisé pour les équipes de Belote (preneur, capot, Belote-Rebelote)
-// et pour le type de mise Rascal (chevrotine / boulet de canon).
+// par props (charte-da.md, maquette 9d « Équipe preneuse »). Utilisé pour les
+// équipes de Belote (preneur, capot, Belote-Rebelote) et pour le type de mise
+// Rascal (chevrotine / boulet de canon).
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, goldTint, opacity, radius, spacing } from '../theme';
+import { alpha, colors, fonts } from '../theme';
 
 export type SegmentedOption<T extends string> = {
   id: T;
@@ -39,7 +40,7 @@ export default function SegmentedToggle<T extends string>({
             style={({ pressed }) => [
               styles.pill,
               selected && styles.pillSelected,
-              pressed && styles.pressed,
+              pressed && !selected && styles.pillPressed,
             ]}
           >
             <Text
@@ -59,12 +60,16 @@ export default function SegmentedToggle<T extends string>({
           style={({ pressed }) => [
             styles.pill,
             styles.pillNone,
-            selectedId === null && styles.pillSelected,
-            pressed && styles.pressed,
+            selectedId === null && styles.pillNoneSelected,
+            pressed && selectedId !== null && styles.pillPressed,
           ]}
         >
           <Text
-            style={[styles.label, selectedId === null && styles.labelSelected]}
+            style={[
+              styles.noneLabel,
+              selectedId === null && styles.noneLabelSelected,
+            ]}
+            numberOfLines={1}
           >
             {noneLabel}
           </Text>
@@ -75,20 +80,44 @@ export default function SegmentedToggle<T extends string>({
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: spacing.sm },
+  row: { flexDirection: 'row', gap: 6 },
   pill: {
     flex: 1,
+    minHeight: 56,
     alignItems: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radius.md,
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
+    borderColor: alpha.creme(0.28),
   },
-  pillNone: { flex: 0.7 },
-  pillSelected: { borderColor: colors.gold, backgroundColor: goldTint.medium },
-  pressed: { opacity: opacity.pressed },
-  label: { color: colors.text, fontSize: 13, fontWeight: '700' },
-  labelSelected: { color: colors.gold },
+  pillPressed: { borderColor: colors.creme },
+  pillSelected: {
+    backgroundColor: colors.sanguine,
+    borderColor: colors.sanguine,
+  },
+  label: {
+    fontFamily: fonts.displayBlack,
+    fontSize: 26,
+    lineHeight: 26,
+    textTransform: 'uppercase',
+    color: colors.creme,
+  },
+  labelSelected: { color: colors.fond },
+  pillNone: {
+    flex: 0.8,
+    borderStyle: 'dashed',
+    borderColor: alpha.creme(0.24),
+  },
+  pillNoneSelected: {
+    backgroundColor: alpha.creme(0.12),
+    borderStyle: 'solid',
+    borderColor: alpha.creme(0.32),
+  },
+  noneLabel: {
+    fontFamily: fonts.monoMedium,
+    fontSize: 11,
+    letterSpacing: 11 * 0.1,
+    textTransform: 'uppercase',
+    color: alpha.creme(0.6),
+  },
+  noneLabelSelected: { color: colors.creme },
 });

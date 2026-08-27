@@ -7,6 +7,7 @@ module.exports = defineConfig([
   expoConfig,
   prettierConfig,
   {
-    ignores: ['dist/*'],
+    // Scripts one-off (Node, hors app) — cf. scripts/generate-texture.js.
+    ignores: ['dist/*', 'scripts/*'],
   },
 ]);

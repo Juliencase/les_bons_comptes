@@ -117,3 +117,13 @@ export function winningTeamId(game: BeloteGame): string | null {
 export function teamName(team: BeloteTeam): string {
   return team.players.join(' & ');
 }
+
+/**
+ * Écart au score cible pour une équipe (jamais négatif : 0 si elle l'a déjà
+ * atteint ou dépassé). Sert à l'indication « 274 pts avant l'objectif »
+ * (maquette 10b).
+ */
+export function pointsToTarget(game: BeloteGame, teamId: string): number {
+  const totals = cumulativeTeamTotals(game);
+  return Math.max(0, game.targetScore - totals[teamId]);
+}

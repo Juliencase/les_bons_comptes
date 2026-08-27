@@ -1,28 +1,23 @@
-// Écran d'accueil générique : image du jeu, titre, effectif/durée, actions
-// (nouvelle partie / reprendre / tableau des scores) et footer. Store/navigation-agnostic —
-// HomeScreen (Skull King) et BeloteHomeScreen (Belote) lui passent leurs données et callbacks.
-import React from 'react';
-import {
-  Image,
-  ImageSourcePropType,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+// Écran d'accueil générique d'un jeu (maquette 8b) : titre (dernier mot en
+// paille), effectif/durée, carte « Partie en cours » (contenu fourni par
+// l'appelant — la forme diffère par jeu : segments de manches pour Skull King,
+// barre de points pour Belote), actions et footer. Store/navigation-agnostic.
+import React, { ReactNode } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BackButton from './BackButton';
 import Button from './Button';
 import ScreenHeader from './ScreenHeader';
-import { colors, fonts, spacing } from '../theme';
+import ScreenBackground from './ScreenBackground';
+import SectionTitle from './SectionTitle';
+import { alpha, colors, fonts } from '../theme';
 
 type Props = {
-  image: ImageSourcePropType;
-  /** hauteur / largeur intrinsèque de l'image, pour calculer IMAGE_HEIGHT sans déformation. */
-  imageRatio: number;
   title: string;
-  playerRangeText: string;
-  durationMin?: number;
+  meta: string;
+  statusLabel?: string;
+  statusMeta?: string;
+  statusContent?: ReactNode;
   footer: string;
   onBack: () => void;
   onNewGame: () => void;
@@ -34,11 +29,11 @@ type Props = {
 };
 
 export default function GameHomeScreen({
-  image,
-  imageRatio,
   title,
-  playerRangeText,
-  durationMin,
+  meta,
+  statusLabel,
+  statusMeta,
+  statusContent,
   footer,
   onBack,
   onNewGame,
@@ -48,98 +43,108 @@ export default function GameHomeScreen({
   scoreboardLabel,
   onScoreboard,
 }: Props) {
-  // On force des dimensions numériques (pas de %/aspectRatio) car <Image>
-  // retombe sur sa taille intrinsèque si le style ne lui donne pas des
-  // width/height résolus en pixels. useWindowDimensions (plutôt que
-  // Dimensions.get à l'import) fait que ça se recalcule à la rotation/resize.
-  const windowWidth = useWindowDimensions().width;
-  const imageWidth = Math.min(windowWidth - spacing.xl * 2, 260);
-  const imageHeight = Math.round(imageWidth * imageRatio);
+  const words = title.split(' ');
+  const last = words.pop();
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <ScreenHeader left={<BackButton label="Jeux" onPress={onBack} />} />
-
-      <View style={styles.container}>
-        <View style={styles.hero}>
-          <Image
-            source={image}
-            style={[
-              styles.gameImage,
-              { width: imageWidth, height: imageHeight },
-            ]}
-            resizeMode="contain"
+    <ScreenBackground>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <View style={styles.container}>
+          <ScreenHeader
+            left={<BackButton label="Les bons comptes" onPress={onBack} />}
           />
-          <Text style={styles.title}>{title}</Text>
-          <View style={styles.infoRow}>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoIcon}>👥</Text>
-              <Text style={styles.infoText}>{playerRangeText}</Text>
+
+          <View style={styles.body}>
+            <View>
+              <Text style={styles.title}>
+                {words.length > 0 ? `${words.join(' ')} ` : ''}
+                <Text style={styles.titleAccent}>{last}</Text>
+              </Text>
+              <Text style={styles.meta}>{meta}</Text>
             </View>
-            {durationMin != null && (
-              <View style={styles.infoItem}>
-                <Text style={styles.infoIcon}>⏱️</Text>
-                <Text style={styles.infoText}>{durationMin} min</Text>
+
+            {statusContent != null && (
+              <View style={styles.statusCard}>
+                <View style={styles.statusHead}>
+                  <SectionTitle>
+                    {statusLabel ?? 'Partie en cours'}
+                  </SectionTitle>
+                  {statusMeta != null && (
+                    <Text style={styles.statusMeta}>{statusMeta}</Text>
+                  )}
+                </View>
+                {statusContent}
               </View>
             )}
+
+            <View style={styles.actions}>
+              {resumeLabel != null && onResume != null && (
+                <Button label={resumeLabel} onPress={onResume} />
+              )}
+              {showScoreboard && (
+                <Button
+                  variant="secondary"
+                  label={scoreboardLabel}
+                  onPress={onScoreboard}
+                />
+              )}
+              <Button
+                variant="destructive"
+                label="Nouvelle partie"
+                onPress={onNewGame}
+              />
+            </View>
+
+            <Text style={styles.footer}>{footer}</Text>
           </View>
         </View>
-
-        <View style={styles.actions}>
-          <Button label="Nouvelle partie" onPress={onNewGame} />
-
-          {resumeLabel != null && onResume != null && (
-            <Button
-              variant="secondary"
-              label={resumeLabel}
-              onPress={onResume}
-            />
-          )}
-
-          {showScoreboard && (
-            <Button
-              variant="ghost"
-              label={scoreboardLabel}
-              onPress={onScoreboard}
-            />
-          )}
-        </View>
-
-        <Text style={styles.footer}>{footer}</Text>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1 },
   container: {
     flex: 1,
-    padding: spacing.xl,
-    justifyContent: 'space-between',
+    paddingHorizontal: 22,
+    paddingTop: 4,
+    paddingBottom: 22,
   },
-  hero: { alignItems: 'center', marginTop: spacing.xxl },
-  gameImage: {},
+  body: { flex: 1, gap: 22, justifyContent: 'center' },
   title: {
-    color: colors.gold,
-    fontFamily: fonts.display,
-    fontSize: 30,
-    marginTop: spacing.lg,
-    letterSpacing: 0.5,
-    textAlign: 'center',
+    fontFamily: fonts.displayBlack,
+    fontSize: 62,
+    lineHeight: Math.round(62 * 0.82),
+    textTransform: 'uppercase',
+    color: colors.creme,
   },
-  infoRow: {
+  titleAccent: { color: colors.paille },
+  meta: {
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    lineHeight: 17,
+    color: alpha.creme(0.55),
+    marginTop: 10,
+  },
+  statusCard: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: alpha.creme(0.14),
+    padding: 18,
+  },
+  statusHead: {
     flexDirection: 'row',
-    gap: spacing.lg,
-    marginTop: spacing.sm,
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: 16,
   },
-  infoItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  infoIcon: { fontSize: 15 },
-  infoText: { color: colors.gold, fontSize: 14, fontWeight: '700' },
-  actions: { gap: spacing.md },
+  statusMeta: { fontFamily: fonts.mono, fontSize: 10, color: alpha.creme(0.5) },
+  actions: { gap: 8 },
   footer: {
-    color: colors.textDim,
-    textAlign: 'center',
-    fontSize: 13,
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    lineHeight: 17,
+    color: alpha.creme(0.4),
   },
 });

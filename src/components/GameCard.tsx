@@ -1,117 +1,76 @@
-// Tuile de sélection d'un jeu (grille 2 colonnes) — agnostique, pilotée par props.
+// Tuile de sélection d'un jeu — pleine largeur, empilées (maquette 8a) —
+// agnostique, pilotée par props. 100 % typographique : pas d'image ni d'emoji
+// (charte §09).
 import React from 'react';
-import {
-  Image,
-  ImageSourcePropType,
-  Pressable,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { playerRange } from '../lib/games';
-import {
-  colors,
-  contentMaxWidth,
-  goldGradient,
-  opacity,
-  radius,
-  spacing,
-} from '../theme';
+import { alpha, colors, fonts } from '../theme';
 
 type Props = {
-  emoji: string;
-  /** Illustration du jeu ; prioritaire sur `emoji` si fournie. */
-  image?: ImageSourcePropType;
   name: string;
+  tagline: string;
   minPlayers: number;
   maxPlayers: number;
+  durationMin?: number;
   available: boolean;
-  /** Libellé du badge (ex. « En cours »). Affiché seulement si `available`. */
+  /** Libellé du badge (ex. « En cours · manche 07 »). Affiché seulement si `available`. */
   badgeLabel?: string;
   onPress: () => void;
 };
 
 export default function GameCard({
-  emoji,
-  image,
   name,
+  tagline,
   minPlayers,
   maxPlayers,
+  durationMin,
   available,
   badgeLabel,
   onPress,
 }: Props) {
-  // Grille 2 colonnes avec padding xl (écran) + gap md (entre tuiles) —
-  // cf. GamesScreen. On calcule la taille de tuile en pixels pour dimensionner
-  // l'image en dur : <Image> retombe sur sa taille intrinsèque si son cadre
-  // n'est pas résolu en pixels (% + aspectRatio sur une Image ne suffit pas).
-  // useWindowDimensions (plutôt que Dimensions.get au chargement du module)
-  // pour rester correct après rotation/redimensionnement.
-  const { width: screenWidth } = useWindowDimensions();
-  const availableWidth = Math.min(screenWidth, contentMaxWidth);
-  const tileSize = (availableWidth - spacing.xl * 2 - spacing.md) / 2;
-  const imageFrameWidth = tileSize * 0.76;
-  const imageFrameHeight = tileSize * 0.58;
-
-  const tileSizeStyle = { width: tileSize, height: tileSize };
-
   if (!available) {
     return (
-      <View style={[styles.tile, tileSizeStyle]}>
-        <View style={styles.placeholder}>
-          <Text style={styles.placeholderEmoji}>{emoji}</Text>
-          <Text style={styles.placeholderName} numberOfLines={2}>
-            {name}
-          </Text>
-          <Text style={styles.placeholderSoon}>Bientôt</Text>
+      <View style={styles.placeholder}>
+        <Text style={styles.placeholderName} numberOfLines={1}>
+          {name}
+        </Text>
+        <View style={styles.soonPill}>
+          <Text style={styles.soonText}>Bientôt</Text>
         </View>
       </View>
     );
   }
 
+  const meta = `${tagline} · ${playerRange({ minPlayers, maxPlayers })} joueurs${
+    durationMin != null ? ` · ${durationMin} min` : ''
+  }`;
+
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.tile,
-        tileSizeStyle,
-        pressed && styles.pressed,
-      ]}
       accessibilityRole="button"
+      style={({ pressed }) => [
+        styles.card,
+        badgeLabel != null && styles.cardActive,
+        pressed && styles.cardPressed,
+      ]}
     >
-      {image && (
-        <Image
-          source={image}
-          style={[
-            styles.image,
-            {
-              top: tileSize * 0.12,
-              left: tileSize * 0.12,
-              width: imageFrameWidth,
-              height: imageFrameHeight,
-            },
-          ]}
-          resizeMode="contain"
-        />
-      )}
-      <LinearGradient
-        colors={['transparent', 'rgba(15,32,39,0.95)']}
-        locations={[0.55, 1]}
-        style={StyleSheet.absoluteFill}
-      />
-      {badgeLabel && (
-        <LinearGradient colors={goldGradient} style={styles.badge}>
-          <Text style={styles.badgeText}>{badgeLabel}</Text>
-        </LinearGradient>
-      )}
-      <View style={styles.body}>
+      <View style={styles.top}>
+        {badgeLabel != null ? (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{badgeLabel}</Text>
+          </View>
+        ) : (
+          <View />
+        )}
+        <Text style={styles.arrow}>→</Text>
+      </View>
+      <View>
         <Text style={styles.name} numberOfLines={1}>
           {name}
         </Text>
-        <Text style={styles.players} numberOfLines={1}>
-          {playerRange({ minPlayers, maxPlayers })} joueurs
+        <Text style={styles.meta} numberOfLines={1}>
+          {meta}
         </Text>
       </View>
     </Pressable>
@@ -119,55 +78,80 @@ export default function GameCard({
 }
 
 const styles = StyleSheet.create({
-  tile: {
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-    backgroundColor: colors.bgAlt,
+  card: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: alpha.creme(0.14),
+    padding: 16,
+    gap: 26,
   },
-  image: {
-    position: 'absolute',
+  cardActive: { borderLeftWidth: 4, borderLeftColor: colors.sanguine },
+  cardPressed: { borderColor: colors.sanguine },
+  top: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
-  pressed: { opacity: opacity.pressed },
+  arrow: {
+    fontFamily: fonts.displayBlack,
+    fontSize: 26,
+    lineHeight: 26,
+    color: alpha.creme(0.4),
+  },
+  badge: {
+    backgroundColor: colors.sanguine,
+    paddingVertical: 5,
+    paddingHorizontal: 7,
+  },
+  badgeText: {
+    fontFamily: fonts.monoMedium,
+    fontSize: 9,
+    letterSpacing: 9 * 0.14,
+    textTransform: 'uppercase',
+    color: colors.fond,
+  },
+  name: {
+    fontFamily: fonts.displayBlack,
+    fontSize: 44,
+    lineHeight: Math.round(44 * 0.86),
+    textTransform: 'uppercase',
+    color: colors.creme,
+  },
+  meta: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    lineHeight: 15,
+    color: alpha.creme(0.55),
+    marginTop: 8,
+  },
   placeholder: {
-    flex: 1,
-    borderRadius: radius.lg,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    opacity: 0.6,
+    borderColor: alpha.creme(0.2),
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: 12,
   },
-  placeholderEmoji: { fontSize: 26 },
   placeholderName: {
-    color: colors.text,
-    fontSize: 11,
-    fontWeight: '800',
-    textAlign: 'center',
-    paddingHorizontal: spacing.xs,
+    fontFamily: fonts.displayBlack,
+    fontSize: 30,
+    lineHeight: Math.round(30 * 0.9),
+    textTransform: 'uppercase',
+    color: alpha.creme(0.34),
   },
-  placeholderSoon: { color: colors.textDim, fontSize: 9, fontWeight: '700' },
-  badge: {
-    position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
-    paddingVertical: 4,
-    paddingHorizontal: 9,
-    borderRadius: 20,
+  soonPill: {
+    borderWidth: 1,
+    borderColor: alpha.creme(0.24),
+    paddingVertical: 5,
+    paddingHorizontal: 7,
   },
-  badgeText: { color: colors.bg, fontSize: 9, fontWeight: '800' },
-  body: {
-    position: 'absolute',
-    left: spacing.md,
-    right: spacing.md,
-    bottom: 10,
-  },
-  name: { color: colors.text, fontSize: 15, fontWeight: '800' },
-  players: {
-    color: colors.gold,
-    fontSize: 10,
-    fontWeight: '700',
-    marginTop: 2,
+  soonText: {
+    fontFamily: fonts.monoMedium,
+    fontSize: 9,
+    letterSpacing: 9 * 0.14,
+    textTransform: 'uppercase',
+    color: alpha.creme(0.34),
   },
 });

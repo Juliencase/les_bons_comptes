@@ -1,8 +1,9 @@
-// Saisie du bonus : boutons rapides −10 / −5 / +5 / +10 ET saisie manuelle au clavier.
-// La valeur démarre à 0. Les boutons ajoutent leur montant ; le champ central est éditable.
+// Saisie du bonus : paliers −10 / −5 / +5 / +10 dans un seul cadre (charte §06)
+// ET saisie manuelle au clavier. La valeur démarre à 0 ; les boutons ajoutent
+// leur montant, le champ central reste éditable.
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { colors, opacity, radius, spacing } from '../theme';
+import { alpha, colors, fonts } from '../theme';
 
 type Props = {
   value: number;
@@ -36,29 +37,34 @@ export default function BonusButtons({ value, onChange }: Props) {
     onChange(parseBonus(t));
   };
 
+  const valueColor =
+    value > 0 ? colors.paille : value < 0 ? colors.grenat : colors.creme;
+
   return (
-    <View style={styles.row}>
-      <StepBtn label="−10" tone="neg" onPress={() => apply(-10)} />
-      <StepBtn label="−5" tone="neg" onPress={() => apply(-5)} />
+    <View style={styles.frame}>
+      <StepBtn
+        label="−10"
+        tone="neg"
+        onPress={() => apply(-10)}
+        border="right"
+      />
+      <StepBtn label="−5" tone="neg" onPress={() => apply(-5)} border="right" />
 
       <TextInput
-        style={[
-          styles.input,
-          value > 0 ? styles.pos : value < 0 ? styles.neg : styles.zero,
-        ]}
+        style={[styles.input, { color: valueColor }]}
         value={text}
         onChangeText={onEdit}
         keyboardType="numbers-and-punctuation"
         placeholder="0"
-        placeholderTextColor={colors.textDim}
+        placeholderTextColor={alpha.creme(0.35)}
         textAlign="center"
         maxLength={5}
         selectTextOnFocus
         accessibilityLabel="Bonus (saisie manuelle)"
       />
 
-      <StepBtn label="+5" tone="pos" onPress={() => apply(5)} />
-      <StepBtn label="+10" tone="pos" onPress={() => apply(10)} />
+      <StepBtn label="+5" tone="pos" onPress={() => apply(5)} border="left" />
+      <StepBtn label="+10" tone="pos" onPress={() => apply(10)} border="left" />
     </View>
   );
 }
@@ -67,21 +73,22 @@ function StepBtn({
   label,
   tone,
   onPress,
+  border,
 }: {
   label: string;
   tone: 'pos' | 'neg';
   onPress: () => void;
+  border: 'left' | 'right';
 }) {
   return (
     <Pressable
       onPress={onPress}
-      hitSlop={4}
       accessibilityRole="button"
       accessibilityLabel={`Bonus ${label}`}
       style={({ pressed }) => [
         styles.btn,
-        tone === 'pos' ? styles.btnPos : styles.btnNeg,
-        pressed && styles.pressed,
+        border === 'right' ? styles.borderRight : styles.borderLeft,
+        pressed && (tone === 'pos' ? styles.pressedPos : styles.pressedNeg),
       ]}
     >
       <Text
@@ -97,44 +104,31 @@ function StepBtn({
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  btn: {
-    paddingHorizontal: spacing.sm,
-    height: 36,
-    minWidth: 44,
-    borderRadius: radius.sm,
+  frame: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
     borderWidth: 1,
+    borderColor: alpha.creme(0.24),
+  },
+  btn: {
+    width: 54,
+    height: 62,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnNeg: {
-    backgroundColor: 'rgba(239,111,111,0.12)',
-    borderColor: colors.negative,
-  },
-  btnPos: {
-    backgroundColor: 'rgba(95,208,138,0.12)',
-    borderColor: colors.positive,
-  },
-  btnText: { fontSize: 14, fontWeight: '800' },
-  negText: { color: colors.negative },
-  posText: { color: colors.positive },
-  pressed: { opacity: opacity.pressedSubtle },
+  borderRight: { borderRightWidth: 1, borderRightColor: alpha.creme(0.24) },
+  borderLeft: { borderLeftWidth: 1, borderLeftColor: alpha.creme(0.24) },
+  pressedNeg: { backgroundColor: alpha.grenat(0.16) },
+  pressedPos: { backgroundColor: alpha.paille(0.16) },
+  btnText: { fontFamily: fonts.displayBlack, fontSize: 21, lineHeight: 21 },
+  negText: { color: colors.grenat },
+  posText: { color: colors.paille },
   input: {
-    minWidth: 56,
-    height: 36,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 0,
-    marginHorizontal: spacing.xs,
-    borderRadius: radius.sm,
-    backgroundColor: colors.bgAlt,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    fontSize: 17,
-    fontWeight: '800',
-    textAlignVertical: 'center',
-    includeFontPadding: false,
+    flex: 1,
+    height: 62,
+    fontFamily: fonts.displayBlack,
+    fontSize: 42,
+    fontVariant: ['tabular-nums'],
+    padding: 0,
   },
-  pos: { color: colors.positive },
-  neg: { color: colors.negative },
-  zero: { color: colors.text },
 });

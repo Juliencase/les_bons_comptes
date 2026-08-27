@@ -1,29 +1,30 @@
-// Écran de saisie de la manche courante.
-import React from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+// Écran de saisie de la manche courante — un joueur à la fois (maquette 9a).
+import React, { useEffect, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useStore } from '../lib/store';
+import BackButton from '../components/BackButton';
+import BonusButtons from '../components/BonusButtons';
 import Button from '../components/Button';
-import IconButton from '../components/IconButton';
-import PlayerRoundRow from '../components/PlayerRoundRow';
+import Callout from '../components/Callout';
+import HeaderPill from '../components/HeaderPill';
+import ScreenBackground from '../components/ScreenBackground';
 import ScreenHeader from '../components/ScreenHeader';
-import { colors, goldGradient, goldTint, radius, spacing } from '../theme';
+import SegmentBar, { SegmentState } from '../components/SegmentBar';
+import SegmentedToggle from '../components/SegmentedToggle';
+import Stepper from '../components/Stepper';
+import { useStore } from '../lib/store';
 import {
+  bidKindOf,
   cardsForRound,
-  cumulativeTotal,
   DEFAULT_BID_KIND,
   isEntryComplete,
   rascalPotential,
+  roundTotal,
   tricksEnteredForRound,
 } from '../lib/scoring';
+import { BID_KINDS } from '../lib/scoreSystems';
+import { formatSignedScore } from '../lib/format';
+import { alpha, colors, fonts } from '../theme';
 
 export default function RoundScreen() {
   const game = useStore((s) => s.game);
@@ -35,160 +36,304 @@ export default function RoundScreen() {
   const commitRound = useStore((s) => s.commitRound);
   const goToRound = useStore((s) => s.goToRound);
 
+  // Position dans la manche — état local, non persisté (cf. plan). Ne peut pas
+  // se dériver de isEntryComplete : une manche atteinte démarre à 0 partout
+  // (zeroEntry, cf. store.ts), donc chaque entrée est déjà "complète" avant
+  // même d'avoir été regardée. On repart toujours du premier joueur à
+  // l'arrivée sur l'écran (nouvelle manche, retour des scores, correction).
+  const [index, setIndex] = useState(0);
+  useEffect(() => {
+    setIndex(0);
+  }, [game?.currentRound]);
+
   if (!game) return null;
 
   const round = game.currentRound;
   const cards = cardsForRound(game.cardsPerRound, round);
-  const totalRounds = game.cardsPerRound.length;
-  const isLast = round >= totalRounds;
-  // Partie déjà terminée : on rouvre une manche passée pour corriger un score,
-  // les modifications s'appliquent immédiatement (la manche reste validée).
   const editMode = !!game.finishedAt;
-  // En Rascal sans boulet de canon, toutes les mises de la manche valent le
-  // même potentiel : on l'annonce une fois en sous-titre (§4.B). Avec l'option,
-  // il dépend du type de mise de chaque joueur → affiché sur sa carte.
   const showPotential = game.scoreSystem === 'rascal' && !game.cannonballRule;
 
   const entries = game.players.map((p) => game.rounds[round]?.[p.id]);
   const allComplete = entries.every((e) => isEntryComplete(e));
+  const playerIndex = Math.min(index, game.players.length - 1);
+  const player = game.players[playerIndex];
+  const entry = entries[playerIndex] ?? {
+    bid: 0,
+    tricks: 0,
+    bonus: 0,
+    validated: false,
+  };
+  const isLastPlayer = playerIndex === game.players.length - 1;
+  const complete = isEntryComplete(entry);
+  const bidKind = bidKindOf(entry);
+  const roundScore = complete
+    ? roundTotal(entry, cards, game.scoreSystem)
+    : null;
+
+  const segments: SegmentState[] = game.players.map((_, i) =>
+    i === playerIndex ? 'current' : i < playerIndex ? 'done' : 'upcoming',
+  );
+
   const tricksSum = tricksEnteredForRound(game, round);
   // Avertissement non bloquant : uniquement une fois la saisie des plis commencée
   // (à l'état initial tout est à 0, on ne veut pas alerter).
   const tricksMismatch = tricksSum !== 0 && tricksSum !== cards;
 
+  const goNext = () => {
+    if (isLastPlayer) {
+      if (allComplete) commitRound();
+    } else {
+      setIndex(playerIndex + 1);
+    }
+  };
+
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScreenHeader
-          left={
-            <IconButton
-              icon="☰"
-              label="Retour à l'accueil"
-              onPress={() => setScreen(editMode ? 'scoreboard' : 'home')}
-            />
-          }
-          title={
-            editMode
-              ? `Modifier la manche ${round}`
-              : `Manche ${round}/${totalRounds}`
-          }
-          subtitle={`${cards} carte${cards > 1 ? 's' : ''}${
-            showPotential
-              ? ` · potentiel ${rascalPotential(cards, DEFAULT_BID_KIND)} pts`
-              : ''
-          }`}
-          right={
-            <IconButton
-              icon="📊"
-              label="Voir le tableau des scores"
-              onPress={() => setScreen('scoreboard')}
-            />
-          }
-          bordered
-        />
-
-        <View style={styles.progressTrack}>
-          <LinearGradient
-            colors={goldGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={[
-              styles.progressFill,
-              { width: `${(round / totalRounds) * 100}%` },
-            ]}
-          />
-        </View>
-
-        <ScrollView
-          contentContainerStyle={styles.list}
-          keyboardShouldPersistTaps="handled"
-        >
-          {game.players.map((p) => {
-            const entry = game.rounds[round]?.[p.id] ?? {
-              bid: 0,
-              tricks: 0,
-              bonus: 0,
-              validated: false,
-            };
-            return (
-              <PlayerRoundRow
-                key={p.id}
-                name={p.name}
-                cumulative={cumulativeTotal(game, p.id)}
-                entry={entry}
-                cards={cards}
-                system={game.scoreSystem}
-                cannonballRule={game.cannonballRule}
-                onBid={(v) => setBid(round, p.id, v)}
-                onTricks={(v) => setTricks(round, p.id, v)}
-                onBonus={(v) => setBonus(round, p.id, v)}
-                onBidKind={(k) => setBidKind(round, p.id, k)}
+    <ScreenBackground>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <View style={styles.container}>
+          <ScreenHeader
+            left={
+              <BackButton
+                label={
+                  editMode
+                    ? 'Scores'
+                    : round > 1
+                      ? `Manche ${String(round - 1).padStart(2, '0')}`
+                      : 'Accueil'
+                }
+                onPress={() =>
+                  editMode
+                    ? setScreen('scoreboard')
+                    : round > 1
+                      ? goToRound(round - 1)
+                      : setScreen('home')
+                }
               />
-            );
-          })}
+            }
+            right={
+              <HeaderPill
+                label="Scores ⌃"
+                onPress={() => setScreen('scoreboard')}
+              />
+            }
+          />
 
-          {tricksMismatch && (
-            <View style={styles.warning}>
-              <Text style={styles.warningText}>
-                ⚠️ {tricksSum} pli{tricksSum > 1 ? 's' : ''} saisi
-                {tricksSum > 1 ? 's' : ''} pour {cards} carte
-                {cards > 1 ? 's' : ''}. Vérifie tes saisies (normal si un
-                Kraken/Baleine a détruit un pli).
+          <ScrollView
+            contentContainerStyle={styles.body}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.titleRow}>
+              <View>
+                <Text style={styles.title}>
+                  {editMode
+                    ? `Modifier la manche ${round}`
+                    : `Manche ${String(round).padStart(2, '0')}`}
+                </Text>
+                <Text style={styles.meta}>
+                  {cards} carte{cards > 1 ? 's' : ''} distribuée
+                  {cards > 1 ? 's' : ''}
+                  {showPotential
+                    ? ` · potentiel ${rascalPotential(cards, DEFAULT_BID_KIND)} pts`
+                    : ''}
+                </Text>
+              </View>
+              <View style={styles.playerBadge}>
+                <Text style={styles.playerBadgeText}>
+                  Joueur {playerIndex + 1} / {game.players.length}
+                </Text>
+              </View>
+            </View>
+
+            <SegmentBar
+              segments={segments}
+              onPressSegment={setIndex}
+              height={4}
+            />
+
+            <Text style={styles.playerName} numberOfLines={1}>
+              {player.name}
+            </Text>
+
+            <View style={styles.field}>
+              <View style={styles.fieldHead}>
+                <Text style={styles.fieldLabel}>Sa mise</Text>
+                <Text style={styles.fieldMax}>max {cards}</Text>
+              </View>
+              <Stepper
+                value={entry.bid}
+                min={0}
+                max={cards}
+                onChange={(v) => setBid(round, player.id, v)}
+                accent={colors.sanguine}
+                decrementLabel="Diminuer la mise"
+                incrementLabel="Augmenter la mise"
+              />
+            </View>
+
+            <View style={styles.field}>
+              <View style={styles.fieldHead}>
+                <Text style={styles.fieldLabel}>Plis remportés</Text>
+                <Text style={styles.fieldMax}>max {cards}</Text>
+              </View>
+              <Stepper
+                value={entry.tricks}
+                min={0}
+                max={cards}
+                onChange={(v) => setTricks(round, player.id, v)}
+                accent={colors.paille}
+                decrementLabel="Diminuer les plis"
+                incrementLabel="Augmenter les plis"
+              />
+            </View>
+
+            {game.scoreSystem === 'rascal' && game.cannonballRule && (
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>Type de mise</Text>
+                <SegmentedToggle
+                  options={[
+                    { id: BID_KINDS[0].key, name: BID_KINDS[0].name },
+                    { id: BID_KINDS[1].key, name: BID_KINDS[1].name },
+                  ]}
+                  selectedId={bidKind}
+                  onSelect={(id) =>
+                    setBidKind(round, player.id, id ?? DEFAULT_BID_KIND)
+                  }
+                />
+              </View>
+            )}
+
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Bonus & malus</Text>
+              <BonusButtons
+                value={entry.bonus ?? 0}
+                onChange={(v) => setBonus(round, player.id, v)}
+              />
+            </View>
+
+            {tricksMismatch && (
+              <Callout>
+                {`${tricksSum} pli${tricksSum > 1 ? 's' : ''} annoncé${tricksSum > 1 ? 's' : ''} pour ${cards} carte${cards > 1 ? 's' : ''} — vérifiez, ou continuez.`}
+              </Callout>
+            )}
+
+            <View style={styles.scoreFooter}>
+              <Text style={styles.scoreFooterLabel}>Cette manche</Text>
+              <Text
+                style={[
+                  styles.scoreValue,
+                  roundScore == null
+                    ? styles.scoreEmpty
+                    : roundScore > 0
+                      ? styles.scoreGain
+                      : roundScore < 0
+                        ? styles.scoreLoss
+                        : styles.scoreEmpty,
+                ]}
+              >
+                {roundScore == null ? '—' : formatSignedScore(roundScore)}
               </Text>
             </View>
-          )}
-        </ScrollView>
+          </ScrollView>
 
-        <View style={styles.footer}>
-          {editMode ? (
-            <Button
-              label="Retour au tableau des scores"
-              onPress={() => setScreen('scoreboard')}
-            />
-          ) : (
-            <>
-              {round > 1 && (
-                <Button
-                  variant="ghost"
-                  label="‹ Manche précédente"
-                  onPress={() => goToRound(round - 1)}
-                />
-              )}
+          <View style={styles.footer}>
+            {editMode ? (
               <Button
-                disabled={!allComplete}
-                label={isLast ? 'Terminer la partie' : 'Valider la manche ›'}
-                onPress={commitRound}
+                label="Retour au tableau des scores"
+                onPress={() => setScreen('scoreboard')}
               />
-            </>
-          )}
+            ) : (
+              <Button
+                label={isLastPlayer ? 'Valider la manche' : 'Joueur suivant →'}
+                onPress={goNext}
+                disabled={!complete}
+              />
+            )}
+          </View>
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-  flex: { flex: 1 },
-  progressTrack: { height: 4, backgroundColor: colors.bgAlt },
-  progressFill: { height: '100%' },
-  list: { padding: spacing.lg },
-  warning: {
-    backgroundColor: goldTint.medium,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.gold,
-    padding: spacing.md,
-    marginTop: spacing.xs,
+  safe: { flex: 1 },
+  container: { flex: 1, paddingHorizontal: 22 },
+  body: { paddingVertical: 18, gap: 18 },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    gap: 12,
   },
-  warningText: { color: colors.goldSoft, fontSize: 13, lineHeight: 19 },
-  footer: {
-    padding: spacing.lg,
+  title: {
+    fontFamily: fonts.displayBlack,
+    fontSize: 46,
+    lineHeight: Math.round(46 * 0.86),
+    textTransform: 'uppercase',
+    color: colors.creme,
+  },
+  meta: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    lineHeight: 15,
+    color: alpha.creme(0.55),
+    marginTop: 7,
+  },
+  playerBadge: {
+    backgroundColor: colors.sanguine,
+    paddingVertical: 6,
+    paddingHorizontal: 9,
+  },
+  playerBadgeText: {
+    fontFamily: fonts.monoMedium,
+    fontSize: 10,
+    letterSpacing: 10 * 0.12,
+    color: colors.fond,
+  },
+  playerName: {
+    fontFamily: fonts.displayBlack,
+    fontSize: 56,
+    lineHeight: Math.round(56 * 0.84),
+    textTransform: 'uppercase',
+    color: colors.creme,
+  },
+  field: { gap: 8 },
+  fieldHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+  },
+  fieldLabel: {
+    fontFamily: fonts.monoMedium,
+    fontSize: 9,
+    letterSpacing: 9 * 0.18,
+    textTransform: 'uppercase',
+    color: alpha.creme(0.5),
+  },
+  fieldMax: { fontFamily: fonts.mono, fontSize: 10, color: alpha.creme(0.4) },
+  scoreFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
     borderTopWidth: 1,
-    borderTopColor: colors.border,
-    gap: spacing.sm,
+    borderTopColor: alpha.creme(0.16),
+    paddingTop: 14,
   },
+  scoreFooterLabel: {
+    fontFamily: fonts.monoMedium,
+    fontSize: 9,
+    letterSpacing: 9 * 0.18,
+    textTransform: 'uppercase',
+    color: alpha.creme(0.5),
+  },
+  scoreValue: {
+    fontFamily: fonts.displayBlack,
+    fontSize: 42,
+    lineHeight: 42,
+    fontVariant: ['tabular-nums'],
+  },
+  scoreEmpty: { color: alpha.creme(0.4) },
+  scoreGain: { color: colors.paille },
+  scoreLoss: { color: colors.grenat },
+  footer: { paddingVertical: 18 },
 });

@@ -1,7 +1,8 @@
-// Bouton de retour texte (« ‹ Libellé ») — agnostique, piloté par props.
+// Lien de retour texte (« ← Libellé ») — agnostique, piloté par props.
+// Mono uppercase, cible tactile 44 px min (charte §05).
 import React from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
-import { colors, opacity } from '../theme';
+import { alpha, fonts } from '../theme';
 
 type Props = {
   label: string;
@@ -12,19 +13,25 @@ export default function BackButton({ label, onPress }: Props) {
   return (
     <Pressable
       onPress={onPress}
-      hitSlop={10}
       accessibilityRole="button"
       accessibilityLabel={`Retour — ${label}`}
-      style={({ pressed }) => pressed && styles.pressed}
+      style={({ pressed }) => [styles.hit, pressed && styles.pressed]}
     >
       <Text style={styles.text} numberOfLines={1}>
-        ‹ {label}
+        ← {label}
       </Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  text: { color: colors.gold, fontSize: 16, fontWeight: '600' },
-  pressed: { opacity: opacity.pressed },
+  hit: { minHeight: 44, justifyContent: 'center' },
+  pressed: { opacity: 0.7 },
+  text: {
+    fontFamily: fonts.monoMedium,
+    fontSize: 10,
+    letterSpacing: 10 * 0.16,
+    textTransform: 'uppercase',
+    color: alpha.creme(0.55),
+  },
 });

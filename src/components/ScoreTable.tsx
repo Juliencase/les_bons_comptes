@@ -1,17 +1,8 @@
 // Tableau récapitulatif Skull King : lignes = manches, colonnes = joueurs.
 import React from 'react';
 import ScoreGrid, { ScoreGridColumn, ScoreGridRow } from './ScoreGrid';
-import { Text } from 'react-native';
-import { colors } from '../theme';
-import {
-  cardsForRound,
-  cumulativeTotals,
-  isEntryComplete,
-  roundTotal,
-} from '../lib/scoring';
+import { cardsForRound, isEntryComplete, roundTotal } from '../lib/scoring';
 import { Game } from '../lib/types';
-
-const CELL = 68;
 
 type Props = {
   game: Game;
@@ -20,7 +11,6 @@ type Props = {
 };
 
 export default function ScoreTable({ game, onRoundPress }: Props) {
-  const totals = cumulativeTotals(game);
   const rounds = Array.from(
     { length: game.cardsPerRound.length },
     (_, i) => i + 1,
@@ -28,7 +18,7 @@ export default function ScoreTable({ game, onRoundPress }: Props) {
 
   const columns: ScoreGridColumn[] = game.players.map((p) => ({
     id: p.id,
-    label: p.name,
+    label: p.name.slice(0, 3),
   }));
 
   const rows: ScoreGridRow[] = rounds.map((r) => {
@@ -36,39 +26,25 @@ export default function ScoreTable({ game, onRoundPress }: Props) {
     // active : après la fin, currentRound ne fait que suivre la dernière
     // manche ouverte pour correction, ce n'est plus « la » manche en cours.
     const isCurrent = !game.finishedAt && r === game.currentRound;
-    const values: Record<string, number | null> = {};
+    const cards = cardsForRound(game.cardsPerRound, r);
+    const values: ScoreGridRow['values'] = {};
     for (const p of game.players) {
       const entry = game.rounds[r]?.[p.id];
       const done = isEntryComplete(entry) && entry?.validated;
-      values[p.id] = done
-        ? roundTotal(
-            entry,
-            cardsForRound(game.cardsPerRound, r),
-            game.scoreSystem,
-          )
-        : null;
+      if (!done) {
+        values[p.id] = null;
+        continue;
+      }
+      const value = roundTotal(entry, cards, game.scoreSystem);
+      values[p.id] = { value, tone: value > 0 ? 'gain' : 'loss' };
     }
     return {
       key: r,
       isCurrent,
       values,
-      labelExtra: (
-        <Text
-          style={{ color: colors.textDim, fontWeight: '400', fontSize: 12 }}
-        >
-          {'  '}({cardsForRound(game.cardsPerRound, r)} c.)
-        </Text>
-      ),
+      labelExtra: `${cards} carte${cards > 1 ? 's' : ''}`,
     };
   });
 
-  return (
-    <ScoreGrid
-      columns={columns}
-      rows={rows}
-      totals={totals}
-      cellWidth={CELL}
-      onRowPress={onRoundPress}
-    />
-  );
+  return <ScoreGrid columns={columns} rows={rows} onRowPress={onRoundPress} />;
 }

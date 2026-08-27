@@ -2,7 +2,7 @@
 // `value` peut être `null` tant que rien n'a été saisi (champ vide, pas de 0 implicite).
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, TextInput } from 'react-native';
-import { colors, radius, spacing } from '../theme';
+import { alpha, colors, fonts } from '../theme';
 
 type Props = {
   value: number | null;
@@ -45,7 +45,7 @@ export default function PointsInput({
       onChangeText={commit}
       keyboardType="number-pad"
       placeholder="—"
-      placeholderTextColor={colors.textDim}
+      placeholderTextColor={alpha.creme(0.35)}
       textAlign="center"
       maxLength={3}
       selectTextOnFocus
@@ -57,14 +57,13 @@ export default function PointsInput({
 const styles = StyleSheet.create({
   input: {
     width: 72,
-    height: 44,
-    borderRadius: radius.sm,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.bgAlt,
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: '800',
-    paddingHorizontal: spacing.sm,
+    height: 48,
+    borderWidth: 1,
+    borderColor: alpha.creme(0.28),
+    color: colors.creme,
+    fontFamily: fonts.displayBlack,
+    fontSize: 20,
+    fontVariant: ['tabular-nums'],
+    paddingHorizontal: 8,
   },
 });

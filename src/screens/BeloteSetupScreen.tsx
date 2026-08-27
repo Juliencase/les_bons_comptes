@@ -1,4 +1,4 @@
-// Écran de configuration Belote : 2 équipes de 2 joueurs + score cible.
+// Écran de configuration Belote : 2 équipes fixes de 2 joueurs + score cible.
 import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -13,29 +13,28 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import BackButton from '../components/BackButton';
 import Button from '../components/Button';
 import ChipPicker from '../components/ChipPicker';
+import ScreenBackground from '../components/ScreenBackground';
 import ScreenHeader from '../components/ScreenHeader';
 import SectionTitle from '../components/SectionTitle';
-import { confirmOverwriteGame } from '../lib/confirm';
 import { getGame, playerRange } from '../lib/games';
 import { finalizePlayerNames } from '../lib/names';
 import { useStore } from '../lib/store';
 import { BeloteTeam } from '../lib/belote/types';
-import { colors, radius, spacing } from '../theme';
+import { alpha, colors, fonts } from '../theme';
 
 const activeGame = getGame('belote');
+const TEAM_LABELS = ['Nous', 'Eux'];
 
 const TARGET_SCORES = [500, 1000, 1500, 2000];
 const TARGET_SCORE_OPTIONS = TARGET_SCORES.map((s) => ({
   key: String(s),
-  label: `${s} pts`,
+  label: String(s),
 }));
 const DEFAULT_TARGET_SCORE = TARGET_SCORES[0];
 
 export default function BeloteSetupScreen() {
-  const beloteGame = useStore((s) => s.beloteGame);
   const setScreen = useStore((s) => s.setScreen);
   const startBeloteGame = useStore((s) => s.startBeloteGame);
-  const hasUnfinishedGame = !!beloteGame && !beloteGame.finishedAt;
 
   const [teamAPlayers, setTeamAPlayers] = useState(['', '']);
   const [teamBPlayers, setTeamBPlayers] = useState(['', '']);
@@ -55,115 +54,168 @@ export default function BeloteSetupScreen() {
       { id: 'team-a', players: [a1, a2] },
       { id: 'team-b', players: [b1, b2] },
     ];
-    const targetScore = Number(targetScoreKey);
-    if (hasUnfinishedGame) {
-      confirmOverwriteGame(() => startBeloteGame(teams, targetScore));
-      return;
-    }
-    startBeloteGame(teams, targetScore);
+    startBeloteGame(teams, Number(targetScoreKey));
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScreenHeader
-          left={
-            <BackButton
-              label="Retour"
-              onPress={() => setScreen('belote-home')}
-            />
-          }
-          title="Les équipes"
-          subtitle={`${playerRange(activeGame)} joueurs en 2 équipes`}
-        />
-
-        <View style={styles.section}>
-          <SectionTitle>Score cible</SectionTitle>
-          <ChipPicker
-            options={TARGET_SCORE_OPTIONS}
-            selectedKey={targetScoreKey}
-            onSelect={setTargetScoreKey}
-          />
-        </View>
-
-        <ScrollView
-          contentContainerStyle={styles.list}
-          keyboardShouldPersistTaps="handled"
+    <ScreenBackground>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <TeamFields
-            label="Équipe A"
-            players={teamAPlayers}
-            onChange={(i, v) => setPlayer('A', i, v)}
-          />
-          <TeamFields
-            label="Équipe B"
-            players={teamBPlayers}
-            onChange={(i, v) => setPlayer('B', i, v)}
-          />
-        </ScrollView>
+          <View style={styles.container}>
+            <ScreenHeader
+              left={
+                <BackButton
+                  label="Belote"
+                  onPress={() => setScreen('belote-home')}
+                />
+              }
+            />
+            <Text style={styles.title}>Nouvelle partie</Text>
 
-        <View style={styles.footer}>
-          <Text style={styles.hint}>Partie en {targetScoreKey} points</Text>
-          <Button label="Commencer la partie" onPress={start} />
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+            <ScrollView
+              contentContainerStyle={styles.body}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.section}>
+                <View style={styles.sectionHead}>
+                  <SectionTitle index="01">Équipes</SectionTitle>
+                  <Text style={styles.sectionMeta}>
+                    {playerRange(activeGame)} joueurs · 2 contre 2
+                  </Text>
+                </View>
+                <View style={styles.teams}>
+                  <TeamCard
+                    label={TEAM_LABELS[0]}
+                    lead
+                    players={teamAPlayers}
+                    onChange={(i, v) => setPlayer('A', i, v)}
+                  />
+                  <TeamCard
+                    label={TEAM_LABELS[1]}
+                    players={teamBPlayers}
+                    onChange={(i, v) => setPlayer('B', i, v)}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.section}>
+                <SectionTitle index="02">Score cible</SectionTitle>
+                <ChipPicker
+                  variant="grid"
+                  options={TARGET_SCORE_OPTIONS}
+                  selectedKey={targetScoreKey}
+                  onSelect={setTargetScoreKey}
+                />
+                <Text style={styles.hint}>
+                  Pas de nombre de donnes fixé : la partie s&apos;arrête quand
+                  une équipe atteint {targetScoreKey}. Contrat à 82, sans
+                  coinche.
+                </Text>
+              </View>
+            </ScrollView>
+
+            <View style={styles.footer}>
+              <Button label="Première donne" onPress={start} />
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
-function TeamFields({
+function TeamCard({
   label,
+  lead,
   players,
   onChange,
 }: {
   label: string;
+  lead?: boolean;
   players: string[];
   onChange: (i: number, v: string) => void;
 }) {
   return (
-    <View style={styles.team}>
-      <Text style={styles.teamLabel}>{label}</Text>
-      {players.map((name, i) => (
-        <TextInput
-          key={i}
-          style={styles.input}
-          value={name}
-          placeholder={`${label} · Joueur ${i + 1}`}
-          placeholderTextColor={colors.textDim}
-          onChangeText={(t) => onChange(i, t)}
-          maxLength={16}
-          returnKeyType="done"
-        />
-      ))}
+    <View style={[styles.teamCard, lead && styles.teamCardLead]}>
+      <Text style={styles.teamName}>{label}</Text>
+      <View style={styles.playerRows}>
+        {players.map((name, i) => (
+          <View key={i} style={styles.playerRow}>
+            <TextInput
+              style={styles.input}
+              value={name}
+              placeholder={`Joueur ${i + 1}`}
+              placeholderTextColor={alpha.creme(0.35)}
+              onChangeText={(t) => onChange(i, t)}
+              maxLength={16}
+              returnKeyType="done"
+            />
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1 },
   flex: { flex: 1 },
-  section: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
-  list: { padding: spacing.lg, gap: spacing.lg },
-  team: { gap: spacing.sm },
-  teamLabel: { color: colors.gold, fontSize: 15, fontWeight: '800' },
+  container: { flex: 1, paddingHorizontal: 22 },
+  title: {
+    fontFamily: fonts.displayBlack,
+    fontSize: 46,
+    lineHeight: Math.round(46 * 0.86),
+    textTransform: 'uppercase',
+    color: colors.creme,
+    marginTop: 14,
+  },
+  body: { paddingVertical: 22, gap: 22 },
+  section: { gap: 10 },
+  sectionHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+  },
+  sectionMeta: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    color: alpha.creme(0.45),
+  },
+  teams: { gap: 8 },
+  teamCard: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: alpha.creme(0.14),
+    padding: 14,
+    gap: 12,
+  },
+  teamCardLead: { borderLeftWidth: 4, borderLeftColor: colors.paille },
+  teamName: {
+    fontFamily: fonts.displayBlack,
+    fontSize: 30,
+    lineHeight: 30,
+    textTransform: 'uppercase',
+    color: colors.creme,
+  },
+  playerRows: { gap: 5 },
+  playerRow: { borderWidth: 1, borderColor: alpha.creme(0.18) },
   input: {
     height: 50,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-    color: colors.text,
-    paddingHorizontal: spacing.md,
-    fontSize: 16,
+    fontFamily: fonts.displaySemiBold,
+    fontSize: 24,
+    textTransform: 'uppercase',
+    color: colors.creme,
+    paddingHorizontal: 12,
   },
-  footer: {
-    padding: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    gap: spacing.sm,
+  hint: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    lineHeight: 17,
+    color: alpha.creme(0.45),
+    marginTop: 10,
   },
-  hint: { color: colors.textDim, textAlign: 'center', fontSize: 13 },
+  footer: { paddingVertical: 18 },
 });

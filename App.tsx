@@ -1,13 +1,16 @@
 import React from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   useFonts,
-  Cinzel_600SemiBold,
-  Cinzel_700Bold,
-  Cinzel_800ExtraBold,
-} from '@expo-google-fonts/cinzel';
+  BigShouldersDisplay_600SemiBold,
+  BigShouldersDisplay_900Black,
+} from '@expo-google-fonts/big-shoulders-display';
+import {
+  SometypeMono_400Regular,
+  SometypeMono_500Medium,
+} from '@expo-google-fonts/sometype-mono';
 import { useStore } from './src/lib/store';
 import GamesScreen from './src/screens/GamesScreen';
 import HomeScreen from './src/screens/HomeScreen';
@@ -19,23 +22,25 @@ import BeloteSetupScreen from './src/screens/BeloteSetupScreen';
 import BeloteRoundScreen from './src/screens/BeloteRoundScreen';
 import BeloteScoreboardScreen from './src/screens/BeloteScoreboardScreen';
 import { colors } from './src/theme';
+import ScreenBackground from './src/components/ScreenBackground';
 
 export default function App() {
   const screen = useStore((s) => s.screen);
   const hydrated = useStore((s) => s.hydrated);
   const [fontsLoaded] = useFonts({
-    Cinzel_600SemiBold,
-    Cinzel_700Bold,
-    Cinzel_800ExtraBold,
+    BigShouldersDisplay_600SemiBold,
+    BigShouldersDisplay_900Black,
+    SometypeMono_400Regular,
+    SometypeMono_500Medium,
   });
 
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
       {!hydrated || !fontsLoaded ? (
-        <View style={styles.loading}>
-          <ActivityIndicator color={colors.gold} size="large" />
-        </View>
+        <ScreenBackground style={styles.loading}>
+          <ActivityIndicator color={colors.sanguine} size="large" />
+        </ScreenBackground>
       ) : screen === 'home' ? (
         <HomeScreen />
       ) : screen === 'setup' ? (
@@ -61,8 +66,6 @@ export default function App() {
 
 const styles = StyleSheet.create({
   loading: {
-    flex: 1,
-    backgroundColor: colors.bg,
     alignItems: 'center',
     justifyContent: 'center',
   },

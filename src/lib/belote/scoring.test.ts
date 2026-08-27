@@ -6,6 +6,7 @@ import {
   isContractHeld,
   isHandComplete,
   otherTeam,
+  pointsToTarget,
   teamName,
   teamRawPoints,
   winningTeamId,
@@ -215,6 +216,37 @@ describe('cumulativeTeamTotals', () => {
       [teamA.id]: BELOTE_REBELOTE_BONUS,
       [teamB.id]: 162,
     });
+  });
+});
+
+describe('pointsToTarget', () => {
+  it("renvoie l'écart au score cible", () => {
+    const game = makeGame({
+      targetScore: 1000,
+      hands: {
+        1: makeHand({
+          takerTeamId: teamA.id,
+          teamAPoints: 100,
+          validated: true,
+        }),
+      },
+    });
+    expect(pointsToTarget(game, teamA.id)).toBe(900);
+    expect(pointsToTarget(game, teamB.id)).toBe(938);
+  });
+
+  it("ne descend jamais sous 0 une fois l'objectif atteint ou dépassé", () => {
+    const game = makeGame({
+      targetScore: 100,
+      hands: {
+        1: makeHand({
+          takerTeamId: teamA.id,
+          teamAPoints: 120,
+          validated: true,
+        }),
+      },
+    });
+    expect(pointsToTarget(game, teamA.id)).toBe(0);
   });
 });
 

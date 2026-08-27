@@ -1,185 +1,155 @@
-// Grille récapitulative générique : lignes = manches/mains, colonnes = joueurs/équipes,
-// dernière ligne = total. Utilisée par ScoreTable (Skull King) et BeloteHandTable (Belote) —
-// ces deux jeux partagent la même forme de tableau, seule la donnée par ligne diffère.
+// Grille récapitulative générique : lignes = manches/mains, colonnes = joueurs/équipes
+// en largeurs égales (charte-da.md, maquette 9b/10b — pas de défilement horizontal,
+// les noms sont abrégés en tête de colonne par l'appelant si besoin). Utilisée par
+// ScoreTable (Skull King) et BeloteHandTable (Belote) — ces deux jeux partagent la
+// même forme de tableau, seule la donnée et le calcul de ton par ligne diffèrent.
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { colors, goldTint, opacity, spacing } from '../theme';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { alpha, colors, fonts } from '../theme';
 import { formatSignedScore } from '../lib/format';
 
-const NAME_COL = 120;
+const LABEL_COL = 62;
 
 export type ScoreGridColumn = {
   id: string;
   label: string;
 };
 
+export type ScoreGridTone = 'gain' | 'loss' | 'neutral';
+
 export type ScoreGridRow = {
   key: number;
-  /** Contenu affiché dans la cellule de gauche (peut inclure des sous-infos, ex. "(3 c.)"). */
-  labelExtra?: React.ReactNode;
+  /** Sous-ligne sous le numéro de manche (ex. "7 cartes", "Eux · chute"). */
+  labelExtra?: string;
   isCurrent: boolean;
-  /** Valeur par colonne ; `null`/`undefined` affiche « · » (cellule vide, ex. manche non validée). */
-  values: Record<string, number | null | undefined>;
+  /** Valeur + ton par colonne ; `null` affiche « · » (manche non validée pour ce joueur). */
+  values: Record<string, { value: number; tone: ScoreGridTone } | null>;
 };
 
 type Props = {
   columns: ScoreGridColumn[];
   rows: ScoreGridRow[];
-  totals: Record<string, number>;
-  cellWidth: number;
   onRowPress?: (key: number) => void;
 };
 
-export default function ScoreGrid({
-  columns,
-  rows,
-  totals,
-  cellWidth,
-  onRowPress,
-}: Props) {
+export default function ScoreGrid({ columns, rows, onRowPress }: Props) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator>
-      <View>
-        <View style={styles.row}>
-          <View style={styles.corner}>
-            <Text style={styles.cornerText}>Manche</Text>
+    <View>
+      <View style={styles.row}>
+        <View style={[styles.labelCol, { width: LABEL_COL }]} />
+        {columns.map((c) => (
+          <View key={c.id} style={styles.headCell}>
+            <Text style={styles.headText} numberOfLines={1}>
+              {c.label}
+            </Text>
           </View>
-          {columns.map((c) => (
-            <View key={c.id} style={[styles.headCell, { width: cellWidth }]}>
-              <Text style={styles.headText} numberOfLines={1}>
-                {c.label}
-              </Text>
-            </View>
-          ))}
-        </View>
+        ))}
+      </View>
 
-        {rows.map((r) => (
-          <Pressable
-            key={r.key}
-            disabled={!onRowPress}
-            onPress={() => onRowPress?.(r.key)}
-            style={({ pressed }) => [
-              styles.row,
-              r.isCurrent && styles.currentRow,
-              pressed && onRowPress && styles.pressedRow,
-            ]}
-          >
-            <View
+      {rows.map((r) => (
+        <Pressable
+          key={r.key}
+          disabled={!onRowPress}
+          onPress={() => onRowPress?.(r.key)}
+          accessibilityRole={onRowPress ? 'button' : undefined}
+          style={({ pressed }) => [
+            styles.row,
+            styles.dataRow,
+            r.isCurrent && styles.currentRow,
+            pressed && !!onRowPress && styles.pressedRow,
+          ]}
+        >
+          <View style={[styles.labelCol, { width: LABEL_COL }]}>
+            <Text
               style={[
                 styles.roundLabel,
                 r.isCurrent && styles.currentRoundLabel,
               ]}
+              numberOfLines={1}
             >
-              <Text
-                style={[
-                  styles.roundLabelText,
-                  r.isCurrent && styles.currentRoundLabelText,
-                ]}
-              >
-                {r.isCurrent && '▶ '}
-                {r.key}
+              {String(r.key).padStart(2, '0')}
+            </Text>
+            {r.labelExtra != null && (
+              <Text style={styles.roundLabelExtra} numberOfLines={1}>
                 {r.labelExtra}
-                {onRowPress && <Text style={styles.editHint}> ✎</Text>}
               </Text>
-            </View>
-            {columns.map((c) => {
-              const val = r.values[c.id];
-              return (
-                <View
-                  key={c.id}
-                  style={[
-                    styles.cell,
-                    { width: cellWidth },
-                    r.isCurrent && styles.currentCell,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.cellText,
-                      val == null
-                        ? styles.cellEmpty
-                        : val >= 0
-                          ? styles.positive
-                          : styles.negative,
-                    ]}
-                  >
-                    {val == null ? '·' : formatSignedScore(val)}
-                  </Text>
-                </View>
-              );
-            })}
-          </Pressable>
-        ))}
-
-        <View style={[styles.row, styles.totalRow]}>
-          <View style={styles.roundLabel}>
-            <Text style={styles.totalLabelText}>Total</Text>
+            )}
           </View>
-          {columns.map((c) => (
-            <View key={c.id} style={[styles.cell, { width: cellWidth }]}>
-              <Text style={styles.totalText}>{totals[c.id]}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-    </ScrollView>
+          {columns.map((c) => {
+            const cell = r.values[c.id];
+            return (
+              <View key={c.id} style={styles.cell}>
+                <Text
+                  style={[
+                    styles.cellText,
+                    cell == null
+                      ? styles.cellEmpty
+                      : r.isCurrent
+                        ? styles.cellPending
+                        : cell.tone === 'gain'
+                          ? styles.gain
+                          : cell.tone === 'loss'
+                            ? styles.loss
+                            : styles.neutral,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {cell == null ? '·' : formatSignedScore(cell.value)}
+                </Text>
+              </View>
+            );
+          })}
+        </Pressable>
+      ))}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row' },
-  currentRow: { backgroundColor: goldTint.subtle },
-  pressedRow: { opacity: opacity.pressedSubtle },
-  corner: {
-    width: NAME_COL,
-    padding: spacing.sm,
-    backgroundColor: colors.bgAlt,
-    borderWidth: 0.5,
-    borderColor: colors.border,
-    justifyContent: 'center',
+  row: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  dataRow: {
+    paddingVertical: 9,
+    paddingHorizontal: 2,
+    borderTopWidth: 1,
+    borderTopColor: alpha.creme(0.12),
   },
-  cornerText: { color: colors.textDim, fontWeight: '700', fontSize: 12 },
-  headCell: {
-    padding: spacing.sm,
-    backgroundColor: colors.bgAlt,
-    borderWidth: 0.5,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+  currentRow: {
+    borderLeftWidth: 3,
+    borderLeftColor: colors.sanguine,
+    backgroundColor: alpha.sanguine(0.07),
   },
-  headText: { color: colors.gold, fontWeight: '700', fontSize: 13 },
+  pressedRow: { backgroundColor: alpha.creme(0.05) },
+  labelCol: { justifyContent: 'center' },
+  headCell: { flex: 1, alignItems: 'flex-end' },
+  headText: {
+    fontFamily: fonts.monoMedium,
+    fontSize: 9,
+    letterSpacing: 9 * 0.1,
+    textTransform: 'uppercase',
+    color: alpha.creme(0.42),
+  },
   roundLabel: {
-    width: NAME_COL,
-    padding: spacing.sm,
-    backgroundColor: colors.card,
-    borderWidth: 0.5,
-    borderColor: colors.border,
-    justifyContent: 'center',
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    color: alpha.creme(0.55),
   },
-  currentRoundLabel: {
-    backgroundColor: goldTint.strong,
-    borderColor: colors.gold,
+  currentRoundLabel: { color: colors.sanguine },
+  roundLabelExtra: {
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    color: alpha.creme(0.4),
+    marginTop: 1,
   },
-  roundLabelText: { color: colors.text, fontWeight: '600' },
-  currentRoundLabelText: { color: colors.gold, fontWeight: '700' },
-  editHint: { color: colors.gold, fontWeight: '700', fontSize: 12 },
-  cell: {
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.card,
-    borderWidth: 0.5,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+  cell: { flex: 1, alignItems: 'flex-end' },
+  cellText: {
+    fontFamily: fonts.displaySemiBold,
+    fontSize: 20,
+    lineHeight: 20,
+    fontVariant: ['tabular-nums'],
   },
-  currentCell: {
-    backgroundColor: goldTint.subtle,
-    borderColor: goldTint.border,
-  },
-  cellText: { fontSize: 14, fontWeight: '600' },
-  cellEmpty: { color: colors.textDim },
-  positive: { color: colors.positive },
-  negative: { color: colors.negative },
-  totalRow: {},
-  totalLabelText: { color: colors.gold, fontWeight: '800' },
-  totalText: { color: colors.gold, fontWeight: '800', fontSize: 16 },
+  cellEmpty: { color: alpha.creme(0.3) },
+  cellPending: { color: alpha.creme(0.4) },
+  gain: { color: colors.paille },
+  loss: { color: colors.grenat },
+  neutral: { color: colors.creme },
 });

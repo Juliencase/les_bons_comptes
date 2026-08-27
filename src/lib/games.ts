@@ -1,13 +1,12 @@
 // Catalogue des jeux proposés sur l'écran d'accueil.
 // Extensible : ajouter une entrée dans GAMES suffit pour proposer un nouveau jeu.
-import { ImageSourcePropType } from 'react-native';
 import { Screen } from './types';
 
 export type GameDef = {
   key: string;
   name: string;
-  emoji: string;
-  image?: ImageSourcePropType;
+  /** Courte accroche affichée sous le nom (ex. « Plis & paris »). */
+  tagline: string;
   duration?: number; // durée approximative du jeu en minutes
   minPlayers: number;
   maxPlayers: number;
@@ -35,8 +34,7 @@ export const GAMES: GameDef[] = [
   {
     key: 'skull-king',
     name: 'Skull King',
-    emoji: '☠️',
-    image: require('../../assets/game/skull_king.png'),
+    tagline: 'Plis & paris',
     duration: 30,
     minPlayers: 2,
     maxPlayers: 8,
@@ -46,8 +44,7 @@ export const GAMES: GameDef[] = [
   {
     key: 'belote',
     name: 'Belote',
-    emoji: '🃏',
-    image: require('../../assets/game/belote.png'),
+    tagline: 'Contrat à 82, sans coinche',
     duration: 45,
     minPlayers: 4,
     maxPlayers: 4,
