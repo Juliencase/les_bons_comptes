@@ -12,7 +12,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import SectionTitle from '../components/SectionTitle';
 import WinnerCard from '../components/WinnerCard';
 import { useStore } from '../lib/store';
-import { ranking } from '../lib/scoring';
+import { rankingRows } from '../lib/scoring';
 import { joinNames } from '../lib/names';
 import { getScoreSystem } from '../lib/scoreSystems';
 import { awards, playerStats, unawardedTitles } from '../lib/stats';
@@ -32,7 +32,7 @@ export default function ScoreboardScreen() {
   const systemLabel = `${getScoreSystem(game.scoreSystem).name}${
     game.cannonballRule ? ' · boulet de canon' : ''
   }`;
-  const rows = ranking(game);
+  const rows = rankingRows(game);
   const stats = Object.fromEntries(
     playerStats(game).map((s) => [s.playerId, s]),
   );
@@ -67,13 +67,13 @@ export default function ScoreboardScreen() {
                 {winners.length > 0 && (
                   <WinnerCard
                     label={winners.length > 1 ? 'Vainqueurs' : 'Vainqueur'}
-                    name={joinNames(winners.map((w) => nameOf(w.playerId)))}
+                    name={joinNames(winners.map((w) => w.name))}
                     score={winners[0].total}
                     detail={
                       runnerUp != null
-                        ? `+${winners[0].total - runnerUp.total} sur ${nameOf(runnerUp.playerId)} · ${pli(
-                            stats[winners[0].playerId]?.tricks ?? 0,
-                          )} remporté${(stats[winners[0].playerId]?.tricks ?? 0) > 1 ? 's' : ''}`
+                        ? `+${winners[0].total - runnerUp.total} sur ${runnerUp.name} · ${pli(
+                            stats[winners[0].id]?.tricks ?? 0,
+                          )} remporté${(stats[winners[0].id]?.tricks ?? 0) > 1 ? 's' : ''}`
                         : undefined
                     }
                   />
@@ -87,11 +87,8 @@ export default function ScoreboardScreen() {
               <SectionTitle>Classement</SectionTitle>
               <RankingList
                 rows={rows.map((row) => ({
-                  id: row.playerId,
-                  name: nameOf(row.playerId),
-                  rank: row.rank,
-                  total: row.total,
-                  meta: pli(stats[row.playerId]?.tricks ?? 0),
+                  ...row,
+                  meta: pli(stats[row.id]?.tricks ?? 0),
                 }))}
               />
             </View>

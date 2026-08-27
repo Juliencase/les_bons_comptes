@@ -64,6 +64,17 @@ export function rascalPotential(cards: number, bidKind: BidKind): number {
 }
 
 /**
+ * Libellé méta affiché sous le titre de manche (« N carte(s) distribuée(s) »,
+ * complété du potentiel de points quand le système/l'option en jeu le
+ * justifie — Rascal sans boulet de canon).
+ */
+export function roundMetaLabel(cards: number, showPotential: boolean): string {
+  const cardsLabel = `${cards} carte${cards > 1 ? 's' : ''} distribuée${cards > 1 ? 's' : ''}`;
+  if (!showPotential) return cardsLabel;
+  return `${cardsLabel} · potentiel ${rascalPotential(cards, DEFAULT_BID_KIND)} pts`;
+}
+
+/**
  * Score d'une manche en système Rascal, **bonus compris** : contrairement au
  * système classique, les bonus sont pondérés par la précision de la mise
  * (100 / 50 / 0 %) et ne sont donc pas additionnables après coup.
@@ -155,6 +166,35 @@ export function ranking(
   });
 }
 
+export type RankingRow = {
+  id: string;
+  name: string;
+  rank: number;
+  total: number;
+};
+
+/**
+ * Classement décroissant prêt pour l'affichage (`RankingList`) : mêmes lignes
+ * que `ranking()`, avec le nom du joueur résolu et la clé renommée en `id`
+ * (forme attendue par `RankingList`). Partagé par `RoundRecapView` et
+ * `ScoreboardScreen`.
+ */
+export function rankingRows(game: Game): RankingRow[] {
+  const nameOf = (id: string) =>
+    game.players.find((p) => p.id === id)?.name ?? '?';
+  return ranking(game).map((row) => ({
+    id: row.playerId,
+    name: nameOf(row.playerId),
+    rank: row.rank,
+    total: row.total,
+  }));
+}
+
+/** Titre de manche affiché en tête d'écran (« Manche 07 »). */
+export function roundLabel(round: number): string {
+  return `Manche ${String(round).padStart(2, '0')}`;
+}
+
 /** Somme des plis remportés saisis sur une manche (pour l'avertissement de cohérence). */
 export function tricksEnteredForRound(game: Game, round: number): number {
   const byPlayer = game.rounds[round] ?? {};
@@ -162,4 +202,18 @@ export function tricksEnteredForRound(game: Game, round: number): number {
     const t = byPlayer[p.id]?.tricks;
     return sum + (t ?? 0);
   }, 0);
+}
+
+/**
+ * Message d'avertissement non bloquant quand la somme des plis saisis ne
+ * correspond pas aux cartes distribuées — `null` tant que la saisie des plis
+ * n'a pas commencé (tout est à 0, cf. zeroEntry côté store) ou si elle est
+ * cohérente.
+ */
+export function tricksMismatchMessage(
+  tricksSum: number,
+  cards: number,
+): string | null {
+  if (tricksSum === 0 || tricksSum === cards) return null;
+  return `${tricksSum} pli${tricksSum > 1 ? 's' : ''} annoncé${tricksSum > 1 ? 's' : ''} pour ${cards} carte${cards > 1 ? 's' : ''} — vérifiez, ou continuez.`;
 }

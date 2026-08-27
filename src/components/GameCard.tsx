@@ -3,6 +3,7 @@
 // (charte §09).
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Badge from './Badge';
 import { playerRange } from '../lib/games';
 import { alpha, colors, fonts } from '../theme';
 
@@ -57,9 +58,7 @@ export default function GameCard({
     >
       <View style={styles.top}>
         {badgeLabel != null ? (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{badgeLabel}</Text>
-          </View>
+          <Badge label={badgeLabel.toUpperCase()} />
         ) : (
           <View />
         )}
@@ -97,18 +96,6 @@ const styles = StyleSheet.create({
     fontSize: 26,
     lineHeight: 26,
     color: alpha.creme(0.4),
-  },
-  badge: {
-    backgroundColor: colors.sanguine,
-    paddingVertical: 5,
-    paddingHorizontal: 7,
-  },
-  badgeText: {
-    fontFamily: fonts.monoMedium,
-    fontSize: 9,
-    letterSpacing: 9 * 0.14,
-    textTransform: 'uppercase',
-    color: colors.fond,
   },
   name: {
     fontFamily: fonts.displayBlack,
