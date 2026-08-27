@@ -7,13 +7,16 @@ type Props = {
   value: number | null;
   min: number;
   max: number;
-  onChange: (value: number) => void;
+  /** Omis quand `readOnly` est vrai — les boutons ± sont alors masqués. */
+  onChange?: (value: number) => void;
   placeholder?: string;
   /** Couleur de la valeur affichée — sanguine (mise) ou paille (plis) selon le champ. */
   accent?: string;
   /** Libellés d'accessibilité des boutons − / + (ex. "Diminuer la mise"). */
   decrementLabel?: string;
   incrementLabel?: string;
+  /** Masque les boutons ± et n'affiche que la valeur, même habillage visuel — pour un champ déjà saisi et non modifiable à ce stade. */
+  readOnly?: boolean;
 };
 
 export default function Stepper({
@@ -25,29 +28,32 @@ export default function Stepper({
   accent = colors.sanguine,
   decrementLabel = 'Diminuer',
   incrementLabel = 'Augmenter',
+  readOnly = false,
 }: Props) {
   const current = value ?? min;
   const canDec = value != null && current > min;
   const canInc = value == null || current < max;
 
   const dec = () => {
-    if (value == null) onChange(min);
-    else if (current > min) onChange(current - 1);
+    if (value == null) onChange?.(min);
+    else if (current > min) onChange?.(current - 1);
   };
   const inc = () => {
-    if (value == null) onChange(min);
-    else if (current < max) onChange(current + 1);
+    if (value == null) onChange?.(min);
+    else if (current < max) onChange?.(current + 1);
   };
 
   return (
     <View style={styles.frame}>
-      <StepBtn
-        symbol="−"
-        label={decrementLabel}
-        enabled={canDec}
-        onPress={dec}
-        side="right"
-      />
+      {!readOnly && (
+        <StepBtn
+          symbol="−"
+          label={decrementLabel}
+          enabled={canDec}
+          onPress={dec}
+          side="right"
+        />
+      )}
       <View style={styles.valueBox}>
         <Text
           style={[
@@ -59,13 +65,15 @@ export default function Stepper({
           {value == null ? placeholder : value}
         </Text>
       </View>
-      <StepBtn
-        symbol="+"
-        label={incrementLabel}
-        enabled={canInc}
-        onPress={inc}
-        side="left"
-      />
+      {!readOnly && (
+        <StepBtn
+          symbol="+"
+          label={incrementLabel}
+          enabled={canInc}
+          onPress={inc}
+          side="left"
+        />
+      )}
     </View>
   );
 }
@@ -105,6 +113,7 @@ const styles = StyleSheet.create({
   frame: {
     flexDirection: 'row',
     alignItems: 'stretch',
+    height: 62,
     borderWidth: 1,
     borderColor: alpha.creme(0.24),
   },
