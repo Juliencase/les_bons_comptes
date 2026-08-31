@@ -29,4 +29,6 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Trigger EAS build
+        # eas.json et app.json vivent dans l'app, pas à la racine du monorepo.
+        working-directory: apps/mobile
         run: npx eas-cli build --platform android --profile preview --non-interactive --no-wait

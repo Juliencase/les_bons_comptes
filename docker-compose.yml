@@ -4,7 +4,10 @@ networks:
 
 services:
   les-bons-comptes:
-    build: .
+    build:
+      # Contexte = racine du monorepo (lockfile + workspaces), Dockerfile dans l'app.
+      context: .
+      dockerfile: apps/mobile/Dockerfile
     image: les-bons-comptes:latest
     container_name: les-bons-comptes
     restart: unless-stopped

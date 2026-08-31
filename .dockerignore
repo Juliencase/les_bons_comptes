@@ -1,6 +1,11 @@
+# Le contexte de build est la racine du monorepo (une image par app, cf.
+# `docker-compose.yml`). On n'exclut donc que ce qui n'a de sens dans aucune
+# des deux images.
 .git
 .github
-.expo
-dist
-node_modules
+.githooks
+.claude
 docs
+**/node_modules
+**/dist
+**/.expo
