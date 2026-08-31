@@ -15,3 +15,12 @@ if [ -x node_modules/.bin/eslint ] && [ -x node_modules/.bin/prettier ]; then
     node_modules/.bin/eslint $js_files || exit 1
   fi
 fi
+
+# meme traitement cote go: gofmt reformate et restage, sinon la CI bloque
+if command -v gofmt >/dev/null 2>&1; then
+  go_files=$(git diff --cached --name-only --diff-filter=ACM -- '*.go')
+  if [ -n "$go_files" ]; then
+    gofmt -w $go_files
+    git add $go_files
+  fi
+fi

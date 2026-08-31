@@ -8,9 +8,11 @@ Usage: `/task <free-text description>` — e.g.
 Add "push direct sur main" (or equivalent) to the description to use the
 direct-to-main path instead of the default branch+PR path.
 
-Les Bons Comptes is a single repo (React Native / Expo, TypeScript strict, no
-backend). This orchestrates `code-review` (scaled to the diff's size and
-risk — see step 7) into one flow with explicit approval checkpoints. Default
+Les Bons Comptes is a monorepo: `apps/mobile` (React Native / Expo, TypeScript
+strict), `apps/api` (Go WebSocket server, skeleton) and `packages/shared` (the
+TS contract generated from the Go structs). This orchestrates `code-review`
+(scaled to the diff's size and risk — see step 7) into one flow with explicit
+approval checkpoints. Default
 path: a feature branch cut from an
 up-to-date `main`, pushed, then a PR opened for the user to merge themselves
 — nothing lands on `main` without the user reviewing the PR. Direct-to-`main`
@@ -31,11 +33,18 @@ From the description, work out:
 - **push mode**: `branch-pr` (default) unless the description explicitly
   says to push directly on `main` (e.g. "push direct sur main", "direct sur
   main") — in that case `direct-main`.
-- **game/area touched**: Skull King (`src/lib/scoring.ts`, `src/lib/stats.ts`,
-  `src/screens/*` non-Belote), Belote (`src/lib/belote/`,
-  `src/screens/Belote*`), or shared (`src/components/`, `src/theme.ts`,
-  `src/lib/store.ts`, `src/lib/types.ts`, `src/lib/names.ts`) — see root
-  `CLAUDE.md`'s Architecture section. Actually look at the relevant code
+- **side touched**: `mobile`, `api`, `shared`, or a combination — this picks
+  which per-directory `CLAUDE.md` to read, which subagent to delegate to in
+  step 5, and which gates to run in step 6. A change to
+  `apps/api/internal/protocol/` is *always* `api` + `shared` (the generated
+  contract must be regenerated and committed with it).
+- **game/area touched** (mobile only; paths below are under `apps/mobile/`):
+  Skull King (`src/lib/scoring.ts`, `src/lib/stats.ts`, `src/screens/*`
+  non-Belote), Belote (`src/lib/belote/`, `src/screens/Belote*`), or
+  shared (`src/components/`, `src/theme.ts`, `src/lib/store.ts`,
+  `src/lib/types.ts`, `src/lib/names.ts`) — see
+  `apps/mobile/CLAUDE.md`'s Architecture section. Actually look at the
+  relevant code
   first (e.g. find the existing screen/engine function for the feature)
   rather than guessing blind — a quick read of the obviously relevant files
   is enough here, this isn't a full deep investigation. If the relevant
@@ -67,9 +76,10 @@ git pull --ff-only origin main
 
 Present, as the question context (not as options): inferred type, push mode
 (branch+PR, or direct-on-main if explicitly requested), the branch name
-that will be used if applicable (see step 4), game/area touched, and a
-short technical approach outline (which files/functions, and whether it
-touches the scoring engine, the store, or is purely presentational).
+that will be used if applicable (see step 4), side and game/area touched, and
+a short technical approach outline (which files/functions, and whether it
+touches the scoring engine, the store, the Go hub, or is purely
+presentational).
 
 Options: "Valider tel quel" / "Ajuster" (go back into discussion with the
 user, then re-present this checkpoint) / "Annuler". Do not touch any code
@@ -88,18 +98,32 @@ instead.
 
 ### 5. Implementation
 
-Do the actual work. Delegate to the `react-native-expert` subagent for
-component/screen/hook work, scoring-engine changes, or anything where
-clean code, TypeScript strictness, or architecture quality matter — it
-already knows this repo's conventions (immutable store patches,
-presentational-component rules, `src/theme.ts` tokens) and is expected to
-consult `vercel-react-native-skills` and `docs/design/charte-da.md` itself
-per its own instructions. Handle small/mechanical changes directly.
+Do the actual work, delegating by side:
 
-Respect: `src/lib/scoring.ts` / `src/lib/belote/scoring.ts` stay pure
-(no store/React dependency), presentational components in
-`src/components/` stay prop-driven only, French UI copy/comments match the
-surrounding code.
+- **`mobile`** — delegate to the `react-native-expert` subagent for
+  component/screen/hook work, scoring-engine changes, or anything where
+  clean code, TypeScript strictness, or architecture quality matter — it
+  already knows this repo's conventions (immutable store patches,
+  presentational-component rules, `src/theme.ts` tokens) and is expected to
+  consult `vercel-react-native-skills` and `docs/design/charte-da.md` itself
+  per its own instructions.
+- **`api`** — delegate to the `go-expert` subagent. **It is a tutor, not an
+  executant**: `apps/api/internal/hub/` and `internal/game/` (goroutines,
+  channels, `select`, shared state) are the user's to write by hand, as a
+  deliberate Go learning exercise. If the task lands in that zone, do not
+  write it and do not let a subagent write it — surface this at the step-3
+  checkpoint instead, and offer explanation/review/scaffolding. Everything
+  else in `apps/api` is delegable normally. See `apps/api/CLAUDE.md`.
+- **`shared`** — never hand-edit `packages/shared/src/generated/`. Change the
+  Go struct in `apps/api/internal/protocol/`, run `make generate`, and commit
+  both together.
+
+Handle small/mechanical changes directly.
+
+Respect: `apps/mobile/src/lib/scoring.ts` /
+`apps/mobile/src/lib/belote/scoring.ts` stay pure (no store/React dependency),
+presentational components in `apps/mobile/src/components/` stay prop-driven
+only, French UI copy/comments match the surrounding code.
 
 For a small/mechanical change where the exact site is already known and it
 touches at most 2 files (a copy tweak, a constant, a one-line logic fix),
@@ -112,15 +136,33 @@ instead.
 
 ### 6. Verification
 
-Non-negotiable before moving to step 7:
-```bash
-npx tsc --noEmit
-npm test
-```
-Both must pass — fix and re-run rather than proceeding on a red run. If
-touching `src/lib/scoring.ts`, `src/lib/belote/scoring.ts`, `src/lib/stats.ts`,
-or `src/lib/store.ts`, run the matching test file directly first (e.g.
-`npx jest src/lib/scoring.test.ts`) to iterate faster, then the full suite.
+Non-negotiable before moving to step 7, scaled to the side touched:
+
+- **`mobile` or `shared`**:
+  ```bash
+  npm run typecheck
+  npm test
+  ```
+- **`api`** (from the repo root):
+  ```bash
+  make check-go        # gofmt -l . + go vet ./... + go test ./...
+  ```
+  Note `-race` is **not** run here: it needs cgo and a C compiler, which the
+  usual Windows dev box lacks. CI runs it. Never report it as passing from a
+  local run that didn't execute it.
+- **contract touched** (`apps/api/internal/protocol/`): also
+  ```bash
+  make generate
+  git status --short packages/shared/src/generated
+  ```
+  and stage the regenerated file with the Go change.
+
+Everything must pass — fix and re-run rather than proceeding on a red run. If
+touching `apps/mobile/src/lib/scoring.ts`,
+`apps/mobile/src/lib/belote/scoring.ts`, `apps/mobile/src/lib/stats.ts`,
+or `apps/mobile/src/lib/store.ts`, run the matching test file directly first
+(e.g. `npx jest src/lib/scoring.test.ts` from `apps/mobile`) to iterate faster,
+then the full suite.
 
 Don't do the manual browser walkthrough here even if the change is
 UI-visible — `tsc`/`npm test` are enough of a gate to move into review.
@@ -138,21 +180,23 @@ git diff --stat HEAD
 (or against the branch's base if commits already exist). Pick a scope:
 
 - **`light`** — diff touches ≤150 changed lines total AND doesn't touch
-  `src/lib/scoring.ts`, `src/lib/belote/scoring.ts`, `src/lib/store.ts`, or
-  `src/lib/stats.ts` (no scoring/store logic at stake). Delegate the diff to
+  `apps/mobile/src/lib/scoring.ts`, `apps/mobile/src/lib/belote/scoring.ts`,
+  `apps/mobile/src/lib/store.ts`, `apps/mobile/src/lib/stats.ts`, or
+  `apps/api/internal/hub/` (no scoring/store/concurrency logic at stake).
+  Delegate the diff to
   `cavecrew-reviewer` for a single compressed pass instead of reading it
   inline yourself — its `path:line: severity: problem. fix.` findings are
   cheap on main context. Fix what it reports, and note in the final report
   that this was a light `cavecrew-reviewer` pass rather than the full
   multi-angle review. Skip to step 9 (no findings checkpoint needed — you
   already applied fixes directly).
-- **`full`** — anything larger, or touching scoring/store logic regardless
-  of size (these are the app's actual invariants — worth the full pass).
-  Proceed to step 8.
+- **`full`** — anything larger, or touching scoring/store/concurrency logic
+  regardless of size (these are the project's actual invariants — worth the
+  full pass). Proceed to step 8.
 
 If genuinely unsure which bucket a borderline diff falls in, default to
 `full` — the cost of an unnecessary full review is lower than missing a real
-issue in scoring/store code.
+issue in scoring, store or hub code.
 
 ### 8. Code review (full scope only)
 
@@ -187,7 +231,7 @@ approved.
 
 ### 10. Final verification
 
-Re-run `npx tsc --noEmit` and `npm test` if step 9 changed any code (light
+Re-run the step-6 gates for the side touched if step 9 changed any code (light
 scope: only if your step-7 self-fixes changed anything since step 6).
 
 If the change is **UI-visible** (step 1), this is the one point in the flow
@@ -214,8 +258,10 @@ commit)".
 Group the diff into one or more logical commits (not mechanically one
 commit per file, and not a single giant commit if the change has clearly
 separate concerns) using Conventional Commits (`type(scope): description`,
-all lowercase, no trailing period — per root `CLAUDE.md`; scope is
-optional, used when it adds precision e.g. `fix(belote): ...`). Write each
+all lowercase, no trailing period — per root `CLAUDE.md`). In this monorepo
+the scope should say which side is touched when it isn't obvious:
+`feat(api):`, `fix(mobile):`, `chore(shared):`, and the finer game scopes
+(`fix(belote):`) still apply inside the mobile app. Write each
 title yourself from the actual staged diff of that commit — never reuse the
 raw `/task` description verbatim as the title, even when a commit happens
 to cover the whole request. Title only by default — no body unless

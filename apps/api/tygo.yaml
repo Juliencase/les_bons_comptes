@@ -1,0 +1,20 @@
+# Génération des types TypeScript à partir des structs Go.
+#
+# Le paquet `internal/protocol` est la source de vérité du contrat front/back ;
+# le TS produit est commité et ne doit jamais être édité à la main.
+# Lancer via `make generate` depuis la racine du monorepo.
+packages:
+  - path: "github.com/sidequest-stash/les-bons-comptes/apps/api/internal/protocol"
+    output_path: "../../packages/shared/src/generated/protocol.ts"
+    # Les commentaires Go documentent le protocole : ils ont autant leur place
+    # côté TS, où ils s'affichent à l'autocomplétion.
+    preserve_comments: "default"
+    frontmatter: |
+      /* eslint-disable */
+      // Code généré depuis apps/api/internal/protocol — NE PAS ÉDITER À LA MAIN.
+      // Régénérer avec `make generate`. La CI échoue si ce fichier a dérivé du Go.
+    type_mappings:
+      # Charge utile encore encodée : le type réel dépend du discriminant, donc
+      # `unknown` plutôt que `any` — TS strict force alors un narrowing explicite
+      # côté client au lieu de laisser passer n'importe quel accès.
+      json.RawMessage: "unknown"
