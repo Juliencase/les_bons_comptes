@@ -8,11 +8,17 @@ WORKDIR /app
 
 # Manifestes seuls d'abord : cette couche n'est réinvalidée que quand les
 # dépendances changent, pas à chaque modification de code.
+#
+# `packages/shared` est déclaré dans les workspaces du lockfile : sans son
+# manifeste, `npm ci` refuse de reconstruire l'arbre, même si l'app ne
+# l'importait pas encore.
 COPY package.json package-lock.json ./
 COPY apps/mobile/package.json apps/mobile/
+COPY packages/shared/package.json packages/shared/
 RUN npm ci --omit=dev
 
 COPY tsconfig.base.json ./
+COPY packages/shared packages/shared
 COPY apps/mobile apps/mobile
 RUN npm run build:web -w @lbc/mobile
 

@@ -1,0 +1,65 @@
+name: CI
+
+# Les gates de qualité tournent ici, sur des runners GitHub — et pas dans
+# `deploy.yml`, qui s'exécute sur le Pi et doit rester rapide. C'est aussi le
+# seul endroit où le détecteur de races peut tourner : il exige cgo et un
+# compilateur C, absents de la plupart des postes de dev Windows.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  js:
+    name: TypeScript / Jest / ESLint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run lint
+
+  go:
+    name: gofmt / vet / test -race
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/api/go.mod
+          cache-dependency-path: apps/api/go.sum
+      - name: gofmt
+        # `gofmt -l` sort 0 même quand il liste des fichiers : il faut tester
+        # sa sortie soi-même pour que l'étape échoue.
+        run: |
+          out=$(gofmt -l .)
+          if [ -n "$out" ]; then echo "Fichiers non formates :"; echo "$out"; exit 1; fi
+      - run: go vet ./...
+      - name: go test -race
+        run: go test -race ./...
+
+  contract:
+    name: Contrat Go → TypeScript
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/api/go.mod
+          cache-dependency-path: apps/api/go.sum
+      - name: Régénérer et vérifier l'absence de dérive
+        # Si ce job échoue, c'est qu'un struct de internal/protocol a changé
+        # sans que `make generate` ait été relancé et le résultat commité.
+        run: |
+          cd apps/api && go tool tygo generate
+          cd "$GITHUB_WORKSPACE"
+          git diff --exit-code packages/shared/src/generated

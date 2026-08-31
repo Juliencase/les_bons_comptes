@@ -18,3 +18,26 @@ services:
       - "traefik.http.routers.les-bons-comptes.rule=Host(`les-bons-comptes.valodin.fr`)"
       - "traefik.http.routers.les-bons-comptes.entrypoints=web"
       - "traefik.http.services.les-bons-comptes.loadbalancer.server.port=80"
+
+  les-bons-comptes-api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: les-bons-comptes-api:latest
+    container_name: les-bons-comptes-api
+    restart: unless-stopped
+    networks:
+      - pi-net
+    environment:
+      PORT: "8080"
+      # Origines autorisées à ouvrir un WebSocket. L'app mobile native n'envoie
+      # pas d'en-tête Origin et n'a donc pas à y figurer : seule la version web
+      # en a besoin.
+      ALLOWED_ORIGINS: "les-bons-comptes.valodin.fr"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.les-bons-comptes-api.rule=Host(`api.les-bons-comptes.valodin.fr`)"
+      - "traefik.http.routers.les-bons-comptes-api.entrypoints=web"
+      # Traefik gère l'upgrade WebSocket sur un router HTTP standard : rien de
+      # plus à déclarer que pour du HTTP classique.
+      - "traefik.http.services.les-bons-comptes-api.loadbalancer.server.port=8080"
