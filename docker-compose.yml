@@ -36,7 +36,9 @@ services:
       ALLOWED_ORIGINS: "les-bons-comptes.valodin.fr"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.les-bons-comptes-api.rule=Host(`api.les-bons-comptes.valodin.fr`)"
+      # Un seul niveau de sous-domaine : le certificat Universal SSL de
+      # Cloudflare couvre `*.valodin.fr`, pas `*.<projet>.valodin.fr`.
+      - "traefik.http.routers.les-bons-comptes-api.rule=Host(`lbc-api.valodin.fr`)"
       - "traefik.http.routers.les-bons-comptes-api.entrypoints=web"
       # Traefik gère l'upgrade WebSocket sur un router HTTP standard : rien de
       # plus à déclarer que pour du HTTP classique.
