@@ -1,199 +1,131 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-@AGENTS.md
+This file provides guidance to Claude Code (claude.ai/code) when working with
+code in this repository.
 
 ## What this is
 
-"Les Bons Comptes" — a React Native (Expo) mobile app for score-keeping card
-and board games. It's built to host several games (see `GamesScreen` and its
-`GAMES` list in `src/lib/games.ts`, designed to grow); **Skull King** (both
-scoring systems — classic and Rascal, incl. the optional cannonball bid) and
-**Belote** (classic, contract fixed at 82 — no coinche) are implemented so
-far. Local-only, offline, no backend: game state is persisted on-device via
-AsyncStorage. Full Skull King rules (used to derive its scoring engine) are in
-[docs/REGLES_SKULL_KING.md](docs/REGLES_SKULL_KING.md) — read it before
-touching `src/lib/scoring.ts`. Belote has no separate rules doc; its scoring
-rules are documented inline as comments in `src/lib/belote/scoring.ts`.
-
-The two games are **not** built on a shared engine — Skull King is
-per-player/per-round (mise, plis, bonus), Belote is per-team/per-hand
-(points comptés, contrat, capot). Each has its own type module, scoring
-engine, store slice, action set, and screens (see Architecture below) —
-don't assume logic can be shared across them.
-
-## Commands
+**Les Bons Comptes** — a monorepo hosting a score-keeping app for card and
+board games, and the Go backend it is growing into.
 
 ```
-npm start          # expo start — dev server, pick platform from the CLI menu
-npm run android    # expo start --android
-npm run ios        # expo start --ios
-npm run web        # expo start --web
-npx tsc --noEmit   # typecheck
-npm test           # jest (preset: jest-expo)
-npx jest src/lib/scoring.test.ts          # Skull King engine tests (unit)
-npx jest src/lib/belote/scoring.test.ts   # Belote engine tests (unit)
-npx jest src/lib/store.test.ts            # Skull King store tests (flows + migrations)
-npx jest src/lib/stats.test.ts            # Skull King end-of-game awards
-npm run update-apk # eas-cli build --platform android --profile preview (non-interactive)
+apps/mobile/       React Native (Expo) app — the whole product today
+apps/api/          Go WebSocket server — skeleton, not wired to the app yet
+packages/shared/   TypeScript contract, generated from the Go structs
+docs/              Game rules + design charter (shared reference)
 ```
 
-Lint/format is ESLint (`eslint-config-expo` flat config, `npm run lint`) +
-Prettier (`npm run format`), enforced by the `.githooks/pre-commit` hook
-(auto-fixes and restages on commit, blocks only on a remaining ESLint error)
-and by a `deploy.yml` CI step — see root `CLAUDE.md` for the hook activation
-command. Tests are Jest (`jest-expo` preset,
-config lives in the `jest` key of `package.json`), on two levels:
+Each of the three has its own `CLAUDE.md` with the detail that matters when
+you are inside it. **Read the one for the directory you are about to touch** —
+this file only covers what spans them.
 
-- **unit** — the pure engines `src/lib/scoring.ts` (Skull King, both scoring
-  systems), `src/lib/belote/scoring.ts` (Belote) and `src/lib/stats.ts` (the
-  end-of-game awards). Extend the matching test file first when touching either
-  engine.
-- **functional** — `src/lib/store.test.ts` drives the Skull King store through
-  its actions the way the screens do (create → enter → validate → correct),
-  and covers `migratePersistedState` (the persisted-state migrations, exported
-  from `store.ts` for that reason). It mocks AsyncStorage with the package's
-  own jest mock, at the top of the file — there is no global jest setup file.
-  Belote has no store-level tests yet.
+The app is local-only and offline: game state lives on-device in AsyncStorage.
+`apps/api` exists so that shared/synchronised games become possible later, and
+as a deliberate Go learning exercise (see `apps/api/CLAUDE.md` — some of it is
+scaffolded on purpose and must **not** be written for the user).
 
-There are **no component/screen tests**: `@testing-library/react-native` is not
-a dependency, so UI changes are only covered by `npx tsc --noEmit`. Verify
-changes with `npx tsc --noEmit` + `npm test`, and by running the app.
+## Layout and why it is this way
 
-## Architecture
+**npm workspaces** (`apps/mobile`, `packages/*`) — no Turborepo, no pnpm. One
+lockfile, one `node_modules` at the root, dependencies hoisted. The Go module
+lives outside that entirely: `apps/api` is a standalone `go.mod`, and npm knows
+nothing about it.
 
-Single Zustand store drives the whole app; there is no navigation library.
-`App.tsx` reads `screen` from the store and renders the matching screen
-component via if/else — switching screens is just `setScreen(...)`. `Screen`
-(`src/lib/types.ts`) lists every screen key across both games, including the
-`belote-*` ones.
+Because two toolchains cohabit, neither can orchestrate the other — that is
+what the root **`Makefile`** is for. `make` on its own lists the targets; the
+one to remember is `make check` before pushing.
 
-- **`src/lib/store.ts`** — the single source of truth. A Zustand store
-  (`persist` + AsyncStorage, `partialize`d to persist `game` and `beloteGame`,
-  not `screen`/`hydrated`) holding **two independent game slots** — the active
-  Skull King `Game` and the active Belote `BeloteGame` — plus the current
-  `Screen`. A player can have an unfinished game of each in parallel; leaving
-  one game's screens doesn't touch the other's state. Skull King mutations
-  (bids, tricks, bonuses, bid kinds, round commits) apply immutable patches to
-  `game.rounds[round][playerId]` via `updateEntry`; Belote mutations
-  (taker, points, capot, Belote-Rebelote, hand commits) apply immutable
-  patches to `beloteGame.hands[hand]` via `updateHand`. Wait for `hydrated`
-  before trusting either game (see the loading branch in `App.tsx`).
-- **`src/lib/types.ts`** — Skull King domain types: `Game`, `Player`,
-  `RoundEntry` (`bid`/`tricks`/`bonus`/`bidKind`/`validated`), `GameSetup`
-  (what `SetupScreen` chooses: `cardsPerRound` + `scoreSystem` +
-  `cannonballRule`, spread into `Game`), plus the shared `Screen` union used
-  by both games. `Game.rounds` is a sparse
-  `Record<round, Record<playerId, RoundEntry>>` — a round only "counts" once
-  its entries are `validated`.
-- **`src/lib/scoring.ts`** — pure calculation functions (`bidScore`,
-  `rascalScore`, `roundTotal`, `cumulativeTotal(s)`, `ranking`), no
-  store/React dependency. It implements **both** scoring systems, picked at
-  game creation and stored on `Game.scoreSystem`: the classic one
-  (`bidScore`, §4.A) and **Rascal** (`rascalScore`, §4.B — same potential
-  `10 × cards` for everyone, won at 100 / 50 / 0 % depending on how close the
-  bid was). Two consequences to keep in mind: `roundTotal` **needs the
-  system** (it is not `bidScore + bonus` in Rascal — bonuses are weighted by
-  the same 100/50/0 %, so they cannot be added after the fact), and the
-  optional cannonball rule (`Game.cannonballRule`) makes each entry carry its
-  own `bidKind` — read it through `bidKindOf(entry)`, never directly, since
-  older entries have none. Card count per round comes from
-  `cardsForRound(game.cardsPerRound, round)`, reading `Game.cardsPerRound` —
-  the array set at game creation from the chosen `FormatDef`
-  (`src/lib/formats.ts`, docs/REGLES_SKULL_KING.md §2). Round count is always
-  `game.cardsPerRound.length`; there is no separate `totalRounds` field.
-- **`src/lib/scoreSystems.ts`** — catalog + display copy for the two Skull
-  King scoring systems (`SCORE_SYSTEMS`) and the two Rascal bid kinds
-  (`BID_KINDS`), same shape/role as `formats.ts`. Labels shown in
-  `SetupScreen`, `PlayerRoundRow`, `HomeScreen` and `ScoreboardScreen` come
-  from here — no rule copy duplicated in the screens.
-- **`src/lib/stats.ts`** — the end-of-game "palmarès": pure functions over
-  `Game` (`playerStats` aggregates each player's validated rounds, `awards`
-  turns them into titles). Adding a title = one entry in `AWARD_DEFS` (value to
-  rank on, `mode: 'min'` to award the lowest, and the detail line). Two rules
-  are enforced in `resolveAward` and worth keeping: a title nobody stands out
-  on (everyone tied) or worth zero (no malus at all) is **not** awarded, and
-  ties share it. Note `RoundEntry.bonus` is a net per round, so a +20 and a -5
-  entered on the same round cannot be told apart — hence "bonus rounds" vs
-  "malus rounds" rather than true totals; and a Rascal round scored at 0 %
-  (`rascalOutcome === 'miss'`) contributes neither, so the palmarès never
-  credits points the scoreboard does not show.
-- **`src/lib/belote/`** — the Belote domain, isolated from Skull King's:
-  - `types.ts`: `BeloteTeam` (2 players), `BeloteHandEntry`
-    (`takerTeamId`/`teamAPoints`/`capotTeamId`/`beloteRebeloteTeamId`/`validated`),
-    `BeloteGame` (`teams`, `targetScore`, `hands: Record<hand, BeloteHandEntry>`,
-    no fixed hand count — the game ends when a team reaches `targetScore`).
-  - `scoring.ts`: pure functions (`teamRawPoints`, `isContractHeld`,
-    `handTeamScores`, `cumulativeTeamTotals`, `winningTeamId`). Key design
-    point: `teamAPoints` is a **fixed property of team A**, not "the current
-    taker's points" — this is deliberate, so that changing `takerTeamId`
-    (who announced the contract) never changes what either team actually
-    scored; only the contract-held/chute verdict is re-evaluated. `teamAPoints`
-    is `number | null` — `null` means the hand hasn't been entered yet
-    (`isHandComplete` gates whether a hand can be validated, same pattern as
-    Skull King's null `bid`/`tricks`).
-- **`src/screens/`** — one container per screen; these are the only files that
-  read/write the store (`useStore`) and orchestrate flow between screens.
-  Belote screens (`BeloteHomeScreen`, `BeloteSetupScreen`, `BeloteRoundScreen`,
-  `BeloteScoreboardScreen`) mirror the Skull King ones
-  (`HomeScreen`/`SetupScreen`/`RoundScreen`/`ScoreboardScreen`) structurally.
-  Where the two games' screens only differ in *chrome* (not domain shape —
-  see below), the shared piece was pulled into a presentational component
-  instead of copy-pasted: `HomeScreen`/`BeloteHomeScreen` are both thin
-  wrappers around `GameHomeScreen` (image/title/labels/callbacks in, JSX
-  out); `SetupScreen`/`BeloteSetupScreen` still differ enough (player list
-  vs. fixed 2-team layout, format picker vs. target-score picker) to stay
-  separate, but both resolve blank name inputs via the shared
-  `finalizePlayerNames` (`src/lib/names.ts`).
-- **`src/components/`** — presentational, prop-driven only. No store or
-  navigation access from here — data and callbacks come from the parent
-  screen. Keep it that way when adding components. Genuinely shared:
-  `ChipPicker` (format picker / target-score picker), `GameHomeScreen`
-  (both home screens), `ScoreGrid` (the manche/hand × player/team grid with
-  a touchable-row + current-row-highlight + total-row skeleton — used by
-  both `ScoreTable` and `BeloteHandTable`, which now only supply their
-  columns/rows/cell-width and stay responsible for their own per-row score
-  math), `SegmentedToggle` (2-option exclusive picker, + an optional "none"
-  pill — Belote's taker/capot/Belote-Rebelote and Skull King's Rascal bid
-  kind; generic over its id type, so ids stay typed at each call site).
-  `PointsInput` is Belote-only for now but written generically in case a
-  future game needs it; `AwardList` (palmarès rows) is Skull-King-only for now
-  but takes plain rows, so a Belote palmarès could reuse it as is. `PlayerRoundRow` is Skull-King-specific (different
-  data shape, no Belote equivalent needed).
-- **`src/theme.ts`** — shared design tokens (`colors`, `spacing`, `radius`,
-  `opacity`, `goldTint`). Use these instead of magic values/inline colors.
-- **Post-game score editing** (both games): once the game's `finishedAt` is
-  set, its scoreboard screen makes each row of the round/hand table touchable
-  (`onRoundPress`/`onHandPress`) to reopen that round/hand for correction.
-  This reuses the existing `goToRound`/`updateEntry` (Skull King) or
-  `goToBeloteHand`/`updateHand` (Belote) actions (no dedicated store state) —
-  both preserve `validated: true` via spread, so edits apply immediately
-  without re-committing. Each round/hand screen derives `editMode` from
-  `!!game.finishedAt` to swap its header/footer copy and skip the commit
-  flow. **Mid-game correction** also exists on both round-entry screens: a
-  "‹ Manche précédente" ghost button (shown once past the first round/hand)
-  calls `goToRound`/`goToBeloteHand` to go back, edit, and re-validate an
-  earlier round without losing later ones — nothing is final until the game
-  ends and even then it stays editable.
-- **End-of-game awards** (Skull King only): once `finishedAt` is set,
-  `ScoreboardScreen` shows a "palmarès" of fun titles (most/fewest tricks, most
-  exact bids, …) between the ranking and the round table — see
-  `src/lib/stats.ts`. It is recomputed from `Game` on every render, so
-  correcting a round from the same screen updates it immediately, and it is
-  simply hidden when no title can be awarded.
+```
+make install        # npm install + go mod download
+make dev-mobile     # expo start
+make dev-api        # go run ./cmd/server  (port 8080)
+make generate       # regenerate the TS contract from the Go structs
+make check          # everything: JS gates + Go gates + contract drift
+make test           # jest + go test
+make fmt            # prettier + gofmt
+```
 
-## Conventions
+Two environment quirks on Windows/Git Bash:
 
-- TypeScript strict mode is on (`tsconfig.json`); keep it passing, no `any`.
-- Comments and some UI copy are in French — match the existing language when
-  editing nearby code/docs.
-- Presentational components must stay store-agnostic and navigation-agnostic
-  (props + callbacks in, JSX out) so they're reusable and testable in
-  isolation — this is enforced by convention, not tooling, so watch for it in
-  review.
-- A dedicated `react-native-expert` subagent is configured
-  (`.claude/agents/react-native-expert.md`) for RN/Expo component work,
-  covering clean-code, performance (list virtualization, selector
-  re-renders, memoization-on-evidence-only), and accessibility conventions in
-  more depth than this file.
+- `ComSpec` is sometimes empty, and npm then fails to spawn lifecycle scripts
+  with a cryptic `ERR_INVALID_ARG_TYPE`. Fix in the current shell:
+  `export ComSpec="C:\\Windows\\System32\\cmd.exe"`. The `Makefile` does **not**
+  set this — it would be wrong on Linux/macOS.
+- Go needs `GOCACHE`; if `%LocalAppData%` is not exported, `go build` fails
+  with "GOCACHE is not defined". The `Makefile` sets a default for it.
+
+## The contract between front and back
+
+The Go structs in **`apps/api/internal/protocol/`** are the single source of
+truth for anything crossing the wire. `tygo` translates them into
+`packages/shared/src/generated/protocol.ts`, which is **committed** so that the
+TypeScript side never needs a Go toolchain to build.
+
+The rule that follows: **never hand-edit anything under
+`packages/shared/src/generated/`.** Change the Go struct, run `make generate`,
+commit both. CI enforces this — the `contract` job regenerates and fails on any
+diff.
+
+`packages/shared/src/index.ts` is hand-written and re-exports the generated
+types, plus the few things tygo cannot express (it flattens `type X string`
+into a plain `string`, losing the union). That file is the import surface;
+consumers import `@lbc/shared`, never the generated file directly.
+
+## Gates
+
+`make check` runs locally what CI runs on every push and PR
+(`.github/workflows/ci.yml`):
+
+| Side | Gate |
+| --- | --- |
+| JS/TS | `npm run typecheck`, `npm test`, `npm run lint` |
+| Go | `gofmt -l .`, `go vet ./...`, `go test -race ./...` |
+| Contract | `make generate` then `git diff --exit-code` on the generated TS |
+
+**`go test -race` only runs in CI.** It needs cgo and a C compiler, which the
+usual Windows dev box does not have — `make test-go` (no `-race`) is the local
+equivalent, and `make test-race` will fail with "requires cgo" unless mingw is
+installed. Don't claim the race detector passed based on a local run.
+
+`.githooks/pre-commit` auto-fixes ESLint/Prettier and restages, blocking only
+on a remaining ESLint error, and runs `gitleaks protect --staged` when
+available. Activate it with `git config core.hooksPath .githooks`.
+
+## Deployment
+
+`.github/workflows/deploy.yml` deploys to a Raspberry Pi on push to `main`;
+`docker-compose.yml` describes both services behind Traefik
+(`les-bons-comptes.valodin.fr` for the web build,
+`api.les-bons-comptes.valodin.fr` for the API). Both Dockerfiles take the
+**repo root as build context** — the lockfile and workspace manifests live
+there, so a context of `apps/mobile` would break `npm ci`.
+
+The Android APK is a separate manual step (`npm run update-apk`, EAS) and is
+never triggered by a merge.
+
+## Agentic setup
+
+`.claude/agents/` holds two specialists, and they are not used the same way:
+
+- **`react-native-expert`** — executes. Delegate component/screen/hook work,
+  refactors, and anything where clean code and architecture matter in
+  `apps/mobile`.
+- **`go-expert`** — **teaches, and does not write the interesting code.** The
+  Go backend exists partly so the user learns Go. It explains, reviews, and
+  writes boilerplate, but concurrency (`internal/hub/`, `internal/game/`) is
+  the user's to write. See `apps/api/CLAUDE.md` for exactly where that line
+  sits.
+
+`.claude/skills/task` (`/task`) orchestrates a full feature/fix flow with
+approval checkpoints.
+
+## Conventions (both sides)
+
+- **Conventional Commits**: `type(scope): description`, all lowercase, no
+  trailing period. Scope is optional but useful here to say which side is
+  touched — `feat(api):`, `fix(mobile):`, `chore(shared):`.
+- **Never** add a `Co-Authored-By` trailer or any mention of Claude to a commit
+  message.
+- Comments and UI copy are in **French**; match the surrounding language when
+  editing nearby code or docs. Identifiers stay in English.
+- Nothing is pushed without the user asking for it.
