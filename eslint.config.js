@@ -17,7 +17,7 @@ module.exports = defineConfig([
       // Module Go.
       'apps/api/**',
       // Types générés depuis les structs Go — ne pas éditer, donc ne pas linter.
-      'packages/shared/src/**',
+      'packages/shared/src/generated/**',
     ],
   },
 ]);
