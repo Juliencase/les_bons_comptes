@@ -88,20 +88,25 @@ equivalent, and `make test-race` will fail with "requires cgo" unless mingw is
 installed. Don't claim the race detector passed based on a local run.
 
 `.githooks/pre-commit` auto-fixes ESLint/Prettier and restages, blocking only
-on a remaining ESLint error, and runs `gitleaks protect --staged` when
-available. Activate it with `git config core.hooksPath .githooks`.
+on a remaining ESLint error, runs `gofmt -w` on staged `.go` files and
+restages those too, and runs `gitleaks protect --staged` when available.
+Activate it with `git config core.hooksPath .githooks`.
 
 ## Deployment
 
 `.github/workflows/deploy.yml` deploys to a Raspberry Pi on push to `main`;
 `docker-compose.yml` describes both services behind Traefik
-(`les-bons-comptes.valodin.fr` for the web build,
-`api.les-bons-comptes.valodin.fr` for the API). Both Dockerfiles take the
+(`les-bons-comptes.valodin.fr` for the web build, `lbc-api.valodin.fr` for
+the API — one label deep, because Cloudflare's free certificate covers
+`*.valodin.fr` and its wildcard matches a single label). Both Dockerfiles take the
 **repo root as build context** — the lockfile and workspace manifests live
 there, so a context of `apps/mobile` would break `npm ci`.
 
-The Android APK is a separate manual step (`npm run update-apk`, EAS) and is
-never triggered by a merge.
+The Android APK is built by a third workflow, `.github/workflows/eas-build.yml`
+(EAS, Android `preview` profile), triggered when a **pull request is merged**
+into `main` — not on a direct push to `main`, and not by `deploy.yml`. It runs
+on a GitHub runner, not the Pi, and needs the `EXPO_TOKEN` repo secret.
+`npm run update-apk` from `apps/mobile` is the manual equivalent.
 
 ## Agentic setup
 
