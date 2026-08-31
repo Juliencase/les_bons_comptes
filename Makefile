@@ -10,9 +10,16 @@
 API    := apps/api
 SHARED := packages/shared
 
-# Go a besoin de son cache ; sous Git Bash sur Windows, %LocalAppData% n'est pas
-# toujours exporté, ce qui fait échouer go build avec « GOCACHE is not defined ».
+# Go a besoin de son cache, et si %LocalAppData% n'est pas exporté il ne sait
+# pas où le mettre. On lui en donne un — mais pas à partir de $(HOME) : sous
+# Git Bash il vaut un chemin POSIX (/c/Users/...) que le binaire Go, natif
+# Windows, rejette avec « GOCACHE is not an absolute path ». USERPROFILE est
+# déjà au format Windows, et n'existe pas ailleurs — d'où les deux branches.
+ifdef USERPROFILE
+export GOCACHE ?= $(USERPROFILE)/.cache/go-build
+else
 export GOCACHE ?= $(HOME)/.cache/go-build
+endif
 
 .DEFAULT_GOAL := help
 
