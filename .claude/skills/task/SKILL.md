@@ -11,7 +11,7 @@ direct-to-main path instead of the default branch+PR path.
 Les Bons Comptes is a monorepo: `apps/mobile` (React Native / Expo, TypeScript
 strict), `apps/api` (Go WebSocket server, skeleton) and `packages/shared` (the
 TS contract generated from the Go structs). This orchestrates `code-review`
-(scaled to the diff's size and risk — see step 7) into one flow with explicit
+(scaled to the diff's size and risk — see step 8) into one flow with explicit
 approval checkpoints. Default
 path: a feature branch cut from an
 up-to-date `main`, pushed, then a PR opened for the user to merge themselves
@@ -28,14 +28,14 @@ nothing is pushed without the user having signed off on it.
 
 From the description, work out:
 - **type**: one of `feat|fix|refactor|test|chore|docs|style|perf` — used
-  for the commit type in step 12 and the branch prefix in step 4 (per root
+  for the commit type in step 13 and the branch prefix in step 5 (per root
   `CLAUDE.md`'s Conventional Commits convention).
 - **push mode**: `branch-pr` (default) unless the description explicitly
   says to push directly on `main` (e.g. "push direct sur main", "direct sur
   main") — in that case `direct-main`.
 - **side touched**: `mobile`, `api`, `shared`, or a combination — this picks
   which per-directory `CLAUDE.md` to read, which subagent to delegate to in
-  step 5, and which gates to run in step 6. A change to
+  step 6, and which gates to run in step 7. A change to
   `apps/api/internal/protocol/` is *always* `api` + `shared` (the generated
   contract must be regenerated and committed with it).
 - **game/area touched** (mobile only; paths below are under `apps/mobile/`):
@@ -54,9 +54,30 @@ From the description, work out:
   its compressed `path:line — symbol` output is cheaper on main context
   than reading full files yourself for a pure lookup.
 - **UI-visible?**: whether the change affects a screen/component (drives
-  step 6's verification depth).
+  step 7's verification depth).
 
-### 2. Clean-baseline check & sync
+### 2. Grill-me: specify the feature (AskUserQuestion)
+
+A free-text `/task` description usually under-specifies product behavior —
+don't fill those gaps by guessing. Before drafting any technical plan, look
+for the decisions the description leaves open (exact UX/copy, where the
+control lives, behavior on edge cases — first entry, empty state, an already
+finished game, offline/AsyncStorage edge cases, which of the two games it
+applies to, whether existing saved games need to keep working) and put them
+to the user via `AskUserQuestion` — a small batch of targeted questions
+(1-4 at a time; ask another round if answers open new ones), not one giant
+open-ended question. Keep questions concrete and closed where possible
+(offer the options you'd otherwise have picked yourself), and prefer your
+own best-guess default as the first/recommended option.
+
+Skip this step only when the description already fully pins down the
+behavior — a precise bug fix with an unambiguous expected result, a copy or
+constant tweak, a mechanical refactor with no behavior change. When in
+doubt, grill rather than assume: this step is about product/feature
+decisions, not the technical approach — that's step 4's plan checkpoint,
+which should already reflect what got settled here.
+
+### 3. Clean-baseline check & sync
 
 Run:
 ```bash
@@ -72,11 +93,11 @@ auto-checkout on their behalf. If on `main` and clean, fast-forward it:
 git pull --ff-only origin main
 ```
 
-### 3. Plan checkpoint (AskUserQuestion)
+### 4. Plan checkpoint (AskUserQuestion)
 
 Present, as the question context (not as options): inferred type, push mode
 (branch+PR, or direct-on-main if explicitly requested), the branch name
-that will be used if applicable (see step 4), side and game/area touched, and
+that will be used if applicable (see step 5), side and game/area touched, and
 a short technical approach outline (which files/functions, and whether it
 touches the scoring engine, the store, the Go hub, or is purely
 presentational).
@@ -85,7 +106,7 @@ Options: "Valider tel quel" / "Ajuster" (go back into discussion with the
 user, then re-present this checkpoint) / "Annuler". Do not touch any code
 before this is approved.
 
-### 4. Create branch (skip if push mode is `direct-main`)
+### 5. Create branch (skip if push mode is `direct-main`)
 
 From the now up-to-date local `main`:
 ```bash
@@ -96,7 +117,7 @@ the style of existing branches in this repo (`fix/base-url-subdomain`,
 `ci/eas-build-on-merge`). If push mode is `direct-main`, stay on `main`
 instead.
 
-### 5. Implementation
+### 6. Implementation
 
 Do the actual work, delegating by side:
 
@@ -111,7 +132,7 @@ Do the actual work, delegating by side:
   executant**: `apps/api/internal/hub/` and `internal/game/` (goroutines,
   channels, `select`, shared state) are the user's to write by hand, as a
   deliberate Go learning exercise. If the task lands in that zone, do not
-  write it and do not let a subagent write it — surface this at the step-3
+  write it and do not let a subagent write it — surface this at the step-4
   checkpoint instead, and offer explanation/review/scaffolding. Everything
   else in `apps/api` is delegable normally. See `apps/api/CLAUDE.md`.
 - **`shared`** — never hand-edit `packages/shared/src/generated/`. Change the
@@ -134,7 +155,7 @@ bigger than that — it'll just return `too-big.` and the turn is wasted;
 go straight to `react-native-expert` or handle it in the main thread
 instead.
 
-### 6. Verification
+### 7. Verification
 
 Non-negotiable before moving to step 7, scaled to the side touched:
 
@@ -166,11 +187,11 @@ then the full suite.
 
 Don't do the manual browser walkthrough here even if the change is
 UI-visible — `tsc`/`npm test` are enough of a gate to move into review.
-The one full manual pass in the Browser pane happens once, at step 10, after
+The one full manual pass in the Browser pane happens once, at step 11, after
 any review-driven fixes have landed — no point exercising the UI twice when
 the code between the two passes may still change.
 
-### 7. Review scope decision
+### 8. Review scope decision
 
 Once implementation is believed complete and verified, measure the diff
 before deciding how to review it:
@@ -188,17 +209,17 @@ git diff --stat HEAD
   inline yourself — its `path:line: severity: problem. fix.` findings are
   cheap on main context. Fix what it reports, and note in the final report
   that this was a light `cavecrew-reviewer` pass rather than the full
-  multi-angle review. Skip to step 9 (no findings checkpoint needed — you
+  multi-angle review. Skip to step 10 (no findings checkpoint needed — you
   already applied fixes directly).
 - **`full`** — anything larger, or touching scoring/store/concurrency logic
   regardless of size (these are the project's actual invariants — worth the
-  full pass). Proceed to step 8.
+  full pass). Proceed to step 9.
 
 If genuinely unsure which bucket a borderline diff falls in, default to
 `full` — the cost of an unnecessary full review is lower than missing a real
 issue in scoring, store or hub code.
 
-### 8. Code review (full scope only)
+### 9. Code review (full scope only)
 
 Invoke the `code-review` skill against the diff **at medium effort**
 (explicitly pass/state medium — do not leave the level unspecified, since
@@ -221,7 +242,7 @@ correctness-flavored candidates in one call, all cleanup-flavored ones in
 another) rather than spawning one verifier agent per candidate — same
 recall, far fewer agents.
 
-### 9. Findings checkpoint (AskUserQuestion, full scope only)
+### 10. Findings checkpoint (AskUserQuestion, full scope only)
 
 Summarize `code-review` findings (severity + one-line summary each) in the
 chat, then ask via `AskUserQuestion` how to proceed: "Corriger tous les
@@ -229,10 +250,10 @@ findings" / "Choisir lesquels corriger" (if chosen, follow up to let the
 user pick a subset) / "Ignorer et continuer tel quel". Apply only what was
 approved.
 
-### 10. Final verification
+### 11. Final verification
 
-Re-run the step-6 gates for the side touched if step 9 changed any code (light
-scope: only if your step-7 self-fixes changed anything since step 6).
+Re-run the step-7 gates for the side touched if step 10 changed any code
+(light scope: only if your step-8 self-fixes changed anything since step 7).
 
 If the change is **UI-visible** (step 1), this is the one point in the flow
 where you start the app (`preview_start` with the `npm start`/`web` dev
@@ -240,7 +261,7 @@ server) and exercise the changed screen in the Browser pane — golden path
 plus the obvious edge case. Do not claim a UI change works without having
 seen it render at least once, here.
 
-### 11. Final recap checkpoint (AskUserQuestion)
+### 12. Final recap checkpoint (AskUserQuestion)
 
 Present: files changed (grouped by concern, not a raw file list if it's
 large), a one-paragraph summary of the change, and what will happen next
@@ -249,11 +270,11 @@ per push mode:
 - `direct-main`: "commit et push direct sur `main` (déclenche le déploiement
   web immédiatement)".
 
-Options: "Valider" (proceed with step 12 as described above) / "Ajuster
+Options: "Valider" (proceed with step 13 as described above) / "Ajuster
 encore" (go back, then re-present this checkpoint) / "Annuler (pas de
 commit)".
 
-### 12. Commit, push, and PR
+### 13. Commit, push, and PR
 
 Group the diff into one or more logical commits (not mechanically one
 commit per file, and not a single giant commit if the change has clearly
@@ -273,11 +294,11 @@ mention of Claude in the message.
 Then, per the approved push mode:
 - **`branch-pr`**: push the branch (`git push -u origin <branch>`), then
   open a PR (`gh pr create --title ... --body ...`) with a short Summary
-  and a Test plan section reflecting step 10's verification. Do not merge it
+  and a Test plan section reflecting step 11's verification. Do not merge it
   — the user merges when ready.
 - **`direct-main`**: push directly (`git push origin main`).
 
-### 13. Final report
+### 14. Final report
 
 For `branch-pr`: report the branch name, commit(s), and the PR URL, and
 remind the user nothing deploys until they merge it. For `direct-main`:
