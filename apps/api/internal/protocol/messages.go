@@ -26,8 +26,9 @@ type MessageType string
 
 const (
 	// Client → serveur.
-	TypeJoin  MessageType = "join"
-	TypeLeave MessageType = "leave"
+	TypeCreate MessageType = "create"
+	TypeJoin   MessageType = "join"
+	TypeLeave  MessageType = "leave"
 
 	// Serveur → client.
 	TypeRoomState MessageType = "room_state"
@@ -55,7 +56,17 @@ type Room struct {
 	Players []Player `json:"players"`
 }
 
-// JoinPayload — charge utile de TypeJoin.
+// CreatePayload — charge utile de TypeCreate. Le serveur alloue un nouveau
+// code de room et y ajoute directement l'émetteur comme premier joueur (pas
+// de round-trip create puis join pour le créateur) ; la réponse est un
+// TypeRoomState classique, code inclus.
+type CreatePayload struct {
+	PlayerName string `json:"playerName"`
+}
+
+// JoinPayload — charge utile de TypeJoin. Utilisé par tout joueur qui
+// rejoint une room existante après sa création, créateur exclu (voir
+// CreatePayload).
 type JoinPayload struct {
 	RoomCode   string `json:"roomCode"`
 	PlayerName string `json:"playerName"`

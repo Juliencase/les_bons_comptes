@@ -20,6 +20,7 @@ export * from './generated/protocol';
  * ici suffit, il n'y a pas de second endroit qu'on pourrait oublier.
  */
 export const KNOWN_MESSAGE_TYPES = [
+  'create',
   'join',
   'leave',
   'room_state',
