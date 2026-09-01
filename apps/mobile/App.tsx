@@ -21,7 +21,7 @@ import BeloteHomeScreen from './src/screens/BeloteHomeScreen';
 import BeloteSetupScreen from './src/screens/BeloteSetupScreen';
 import BeloteRoundScreen from './src/screens/BeloteRoundScreen';
 import BeloteScoreboardScreen from './src/screens/BeloteScoreboardScreen';
-import RoomCreateScreen from './src/screens/RoomCreateScreen';
+import RoomScreen from './src/screens/RoomScreen';
 import { colors } from './src/theme';
 import ScreenBackground from './src/components/ScreenBackground';
 
@@ -58,8 +58,8 @@ export default function App() {
         <BeloteRoundScreen />
       ) : screen === 'belote-scoreboard' ? (
         <BeloteScoreboardScreen />
-      ) : screen === 'room-create' ? (
-        <RoomCreateScreen />
+      ) : screen === 'room' ? (
+        <RoomScreen />
       ) : (
         <GamesScreen />
       )}

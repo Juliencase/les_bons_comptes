@@ -17,7 +17,8 @@ scoring systems — classic and Rascal, incl. the optional cannonball bid) and
 far. Local-only, offline: game state is persisted on-device via AsyncStorage.
 The Go API in `apps/api` is still mostly a skeleton, but the app has started
 talking to it: `src/lib/ws.ts` (`useRoomSocket`) opens a WebSocket to `/ws` and
-`RoomCreateScreen` sends a `create` message to allocate a multiplayer room.
+`RoomScreen` sends a `create` or `join` message to allocate/reach a
+multiplayer room.
 The backend's hub (`apps/api/internal/hub`) doesn't implement `Run`/
 `HandleConn` yet, so today every connection is closed immediately — the
 screen handles that as an expected connection error, not a bug. Don't assume

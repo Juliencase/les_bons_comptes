@@ -1,8 +1,9 @@
-// Écran multijoueur : création d'une salle à distance (WebSocket, apps/api).
-// Le hub Go n'est pas encore branché (apps/api/internal/hub) — la connexion
-// échoue systématiquement pour l'instant ; cet écran gère cet échec proprement
-// (message clair, bouton pour réessayer) sans jamais planter.
-import React, { useState } from 'react';
+// Écran multijoueur : créer une salle à distance ou en rejoindre une avec un
+// code (WebSocket, apps/api). Le hub Go n'est pas encore branché
+// (apps/api/internal/hub) — la connexion échoue systématiquement pour
+// l'instant ; cet écran gère cet échec proprement (message clair, bouton pour
+// réessayer) sans jamais planter.
+import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -20,23 +21,54 @@ import Callout from '../components/Callout';
 import RoomCodeCard from '../components/RoomCodeCard';
 import ScreenBackground from '../components/ScreenBackground';
 import ScreenHeader from '../components/ScreenHeader';
+import SegmentedToggle, {
+  SegmentedOption,
+} from '../components/SegmentedToggle';
 import { useRoomSocket } from '../lib/ws';
 import { useStore } from '../lib/store';
-import { alpha, colors, fonts } from '../theme';
+import { alpha, colors, fonts, opacity } from '../theme';
 
-export default function RoomCreateScreen() {
+type RoomMode = 'create' | 'join';
+
+const MODE_OPTIONS: [SegmentedOption<RoomMode>, SegmentedOption<RoomMode>] = [
+  { id: 'create', name: 'Créer' },
+  { id: 'join', name: 'Rejoindre' },
+];
+
+const ROOM_CODE_LENGTH = 4;
+
+export default function RoomScreen() {
   const setScreen = useStore((s) => s.setScreen);
+  const [mode, setMode] = useState<RoomMode>('create');
   const [playerName, setPlayerName] = useState('');
-  const { status, room, errorMessage, createRoom } = useRoomSocket();
+  const [roomCode, setRoomCode] = useState('');
+  const codeInputRef = useRef<TextInput>(null);
+  const { status, room, errorMessage, createRoom, joinRoom } =
+    useRoomSocket();
 
+  const isJoinMode = mode === 'join';
   const trimmedName = playerName.trim();
   const isConnecting = status === 'connecting';
-  const canSubmit = trimmedName.length > 0 && !isConnecting;
+  const canSubmit =
+    trimmedName.length > 0 &&
+    !isConnecting &&
+    (!isJoinMode || roomCode.length === ROOM_CODE_LENGTH);
 
   const submit = () => {
     if (!canSubmit) return;
-    createRoom(trimmedName);
+    if (isJoinMode) {
+      joinRoom(roomCode, trimmedName);
+    } else {
+      createRoom(trimmedName);
+    }
   };
+
+  const submitLabel =
+    status === 'error'
+      ? 'Réessayer'
+      : isJoinMode
+        ? 'Rejoindre la salle'
+        : 'Créer la salle';
 
   return (
     <ScreenBackground>
@@ -61,9 +93,21 @@ export default function RoomCreateScreen() {
                 <RoomCodeCard code={room.code} players={room.players} />
               ) : (
                 <View style={styles.form}>
+                  <View
+                    style={isConnecting && styles.toggleDisabled}
+                    pointerEvents={isConnecting ? 'none' : 'auto'}
+                  >
+                    <SegmentedToggle
+                      options={MODE_OPTIONS}
+                      selectedId={mode}
+                      onSelect={(id) => id && setMode(id)}
+                    />
+                  </View>
+
                   <Text style={styles.hint}>
-                    Créez une salle à distance et partagez le code à l&apos;oral
-                    avec les autres joueurs.
+                    {isJoinMode
+                      ? 'Entrez le code à 4 chiffres communiqué par le créateur de la salle.'
+                      : "Créez une salle à distance et partagez le code à l'oral avec les autres joueurs."}
                   </Text>
 
                   <View style={styles.field}>
@@ -75,11 +119,36 @@ export default function RoomCreateScreen() {
                       placeholder="Joueur"
                       placeholderTextColor={alpha.creme(0.35)}
                       maxLength={16}
-                      returnKeyType="done"
+                      returnKeyType={isJoinMode ? 'next' : 'done'}
                       editable={!isConnecting}
-                      onSubmitEditing={submit}
+                      onSubmitEditing={
+                        isJoinMode
+                          ? () => codeInputRef.current?.focus()
+                          : submit
+                      }
                     />
                   </View>
+
+                  {isJoinMode && (
+                    <View style={styles.field}>
+                      <Text style={styles.fieldLabel}>Code de la salle</Text>
+                      <TextInput
+                        ref={codeInputRef}
+                        style={styles.input}
+                        value={roomCode}
+                        onChangeText={(raw) =>
+                          setRoomCode(raw.replace(/[^0-9]/g, ''))
+                        }
+                        placeholder="0000"
+                        placeholderTextColor={alpha.creme(0.35)}
+                        keyboardType="number-pad"
+                        maxLength={ROOM_CODE_LENGTH}
+                        returnKeyType="done"
+                        editable={!isConnecting}
+                        onSubmitEditing={submit}
+                      />
+                    </View>
+                  )}
 
                   {isConnecting && (
                     <View style={styles.connecting}>
@@ -100,7 +169,7 @@ export default function RoomCreateScreen() {
             {status !== 'connected' && (
               <View style={styles.footer}>
                 <Button
-                  label={status === 'error' ? 'Réessayer' : 'Créer la salle'}
+                  label={submitLabel}
                   onPress={submit}
                   disabled={!canSubmit}
                 />
@@ -127,6 +196,7 @@ const styles = StyleSheet.create({
   },
   body: { paddingVertical: 22, flexGrow: 1 },
   form: { gap: 18 },
+  toggleDisabled: { opacity: opacity.disabled },
   hint: {
     fontFamily: fonts.mono,
     fontSize: 10,

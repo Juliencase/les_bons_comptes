@@ -8,10 +8,12 @@ import {
   ErrorPayload,
   isEnvelope,
   isKnownMessageType,
+  JoinPayload,
   Room,
   RoomStatePayload,
   TypeCreate,
   TypeError as TypeErrorMessage,
+  TypeJoin,
   TypeRoomState,
 } from '@lbc/shared';
 
@@ -63,10 +65,10 @@ const CONNECTION_FAILED_MESSAGE =
   'Connexion au serveur impossible. Vérifiez le réseau et réessayez.';
 
 /**
- * Ouvre une connexion au serveur multijoueur, crée une salle, et expose son
- * état au composant appelant (`idle` → `connecting` → `connected`/`error`).
- * Un seul socket vit à la fois : rappeler `createRoom` referme silencieusement
- * une tentative précédente.
+ * Ouvre une connexion au serveur multijoueur et expose son état au composant
+ * appelant (`idle` → `connecting` → `connected`/`error`). Un seul socket vit à
+ * la fois : rappeler `createRoom`/`joinRoom` referme silencieusement une
+ * tentative précédente.
  */
 export function useRoomSocket() {
   const [state, setState] = useState<RoomSocketState>(IDLE_STATE);
@@ -77,8 +79,11 @@ export function useRoomSocket() {
     socketRef.current = null;
   }, []);
 
-  const createRoom = useCallback(
-    (playerName: string) => {
+  // Cycle de vie commun à `create` et `join` : seule l'enveloppe envoyée à
+  // l'ouverture diffère entre les deux, tout le reste (connexion, écoute des
+  // messages, gestion d'erreur/fermeture) est partagé.
+  const open = useCallback(
+    (buildOutbound: () => Envelope) => {
       closeSocket();
       setState({ status: 'connecting', room: null, errorMessage: null });
 
@@ -91,9 +96,7 @@ export function useRoomSocket() {
 
       socket.onopen = () => {
         if (!isCurrent()) return;
-        const payload: CreatePayload = { playerName };
-        const envelope: Envelope = { type: TypeCreate, data: payload };
-        socket.send(JSON.stringify(envelope));
+        socket.send(JSON.stringify(buildOutbound()));
       };
 
       socket.onmessage = (event) => {
@@ -150,6 +153,26 @@ export function useRoomSocket() {
     [closeSocket],
   );
 
+  const createRoom = useCallback(
+    (playerName: string) => {
+      open(() => {
+        const payload: CreatePayload = { playerName };
+        return { type: TypeCreate, data: payload };
+      });
+    },
+    [open],
+  );
+
+  const joinRoom = useCallback(
+    (roomCode: string, playerName: string) => {
+      open(() => {
+        const payload: JoinPayload = { roomCode, playerName };
+        return { type: TypeJoin, data: payload };
+      });
+    },
+    [open],
+  );
+
   const reset = useCallback(() => {
     closeSocket();
     setState(IDLE_STATE);
@@ -160,5 +183,5 @@ export function useRoomSocket() {
     return () => closeSocket();
   }, [closeSocket]);
 
-  return { ...state, createRoom, reset };
+  return { ...state, createRoom, joinRoom, reset };
 }
