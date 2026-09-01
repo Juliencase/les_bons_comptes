@@ -41,10 +41,17 @@ func main() {
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
+	// Ferme sur echec d'ecoute (port deja pris, adresse invalide) : sans ce
+	// signal, l'arret gracieux qui suit se deroulerait normalement et le
+	// processus sortirait avec le code 0, rendant un demarrage rate
+	// indiscernable d'un arret propre pour Docker comme pour la CI.
+	listenFailed := make(chan struct{})
+
 	go func() {
 		logger.Info("serveur demarre", "addr", cfg.Addr, "origins", cfg.AllowedOrigins)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("echec de l'ecoute", "err", err)
+			close(listenFailed)
 			stop()
 		}
 	}()
@@ -61,5 +68,12 @@ func main() {
 		logger.Error("arret force avant la fin des requetes", "err", err)
 		os.Exit(1)
 	}
+
+	select {
+	case <-listenFailed:
+		os.Exit(1)
+	default:
+	}
+
 	logger.Info("arret propre")
 }
