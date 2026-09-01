@@ -24,7 +24,7 @@ func newTestRouter() http.Handler {
 		AllowedOrigins:  []string{allowedOrigin},
 		ShutdownTimeout: time.Second,
 	}
-	return NewRouter(hub.New(), cfg, slog.New(slog.DiscardHandler))
+	return NewRouter(hub.New(slog.New(slog.DiscardHandler)), cfg, slog.New(slog.DiscardHandler))
 }
 
 // wsRequest fabrique une requete d'upgrade complete ; seule l'origine varie
