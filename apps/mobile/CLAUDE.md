@@ -15,8 +15,13 @@ and board games. It's built to host several games (see `GamesScreen` and its
 scoring systems — classic and Rascal, incl. the optional cannonball bid) and
 **Belote** (classic, contract fixed at 82 — no coinche) are implemented so
 far. Local-only, offline: game state is persisted on-device via AsyncStorage.
-The Go API in `apps/api` is a skeleton and **the app does not talk to it yet** —
-don't add network calls on the assumption that it does. Full Skull King rules
+The Go API in `apps/api` is still mostly a skeleton, but the app has started
+talking to it: `src/lib/ws.ts` (`useRoomSocket`) opens a WebSocket to `/ws` and
+`RoomCreateScreen` sends a `create` message to allocate a multiplayer room.
+The backend's hub (`apps/api/internal/hub`) doesn't implement `Run`/
+`HandleConn` yet, so today every connection is closed immediately — the
+screen handles that as an expected connection error, not a bug. Don't assume
+more backend behavior exists than that single round-trip. Full Skull King rules
 (used to derive its scoring engine) are in
 [docs/REGLES_SKULL_KING.md](../../docs/REGLES_SKULL_KING.md) — read it before
 touching `src/lib/scoring.ts`. Belote has no separate rules doc; its scoring

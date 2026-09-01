@@ -1,7 +1,7 @@
 // Écran de lancement « Les Bons Comptes » : choix du jeu à compter.
 // Le catalogue des jeux vit dans src/lib/games.ts.
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import GameCard from '../components/GameCard';
 import ScreenBackground from '../components/ScreenBackground';
@@ -59,6 +59,24 @@ export default function GamesScreen() {
             ))}
           </View>
 
+          <Pressable
+            onPress={() => setScreen('room-create')}
+            accessibilityRole="button"
+            accessibilityLabel="Multijoueur — créer une salle à distance"
+            style={({ pressed }) => [
+              styles.multiplayer,
+              pressed && styles.multiplayerPressed,
+            ]}
+          >
+            <View>
+              <Text style={styles.multiplayerName}>Multijoueur</Text>
+              <Text style={styles.multiplayerMeta}>
+                Créer une salle à distance
+              </Text>
+            </View>
+            <Text style={styles.multiplayerArrow}>→</Text>
+          </Pressable>
+
           {inProgress.size === 0 && (
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>Aucune partie en cours</Text>
@@ -103,6 +121,36 @@ const styles = StyleSheet.create({
     maxWidth: 320,
   },
   list: { gap: 8 },
+  multiplayer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: alpha.creme(0.14),
+    padding: 16,
+  },
+  multiplayerPressed: { borderColor: colors.sanguine },
+  multiplayerName: {
+    fontFamily: fonts.displayBlack,
+    fontSize: 26,
+    lineHeight: Math.round(26 * 0.9),
+    textTransform: 'uppercase',
+    color: colors.creme,
+  },
+  multiplayerMeta: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    lineHeight: 15,
+    color: alpha.creme(0.55),
+    marginTop: 6,
+  },
+  multiplayerArrow: {
+    fontFamily: fonts.displayBlack,
+    fontSize: 26,
+    lineHeight: 26,
+    color: alpha.creme(0.4),
+  },
   emptyState: {
     borderTopWidth: 1,
     borderTopColor: alpha.creme(0.16),
