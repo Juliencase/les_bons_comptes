@@ -28,7 +28,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	h := hub.New()
+	h := hub.New(logger)
 	go h.Run(ctx)
 
 	srv := &http.Server{
