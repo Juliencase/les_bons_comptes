@@ -10,7 +10,7 @@ export type Screen =
   | 'belote-setup'
   | 'belote-round'
   | 'belote-scoreboard'
-  | 'room-create';
+  | 'room';
 
 export type Player = {
   id: string;

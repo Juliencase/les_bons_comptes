@@ -60,9 +60,9 @@ export default function GamesScreen() {
           </View>
 
           <Pressable
-            onPress={() => setScreen('room-create')}
+            onPress={() => setScreen('room')}
             accessibilityRole="button"
-            accessibilityLabel="Multijoueur — créer une salle à distance"
+            accessibilityLabel="Multijoueur — créer ou rejoindre une salle à distance"
             style={({ pressed }) => [
               styles.multiplayer,
               pressed && styles.multiplayerPressed,
@@ -71,7 +71,7 @@ export default function GamesScreen() {
             <View>
               <Text style={styles.multiplayerName}>Multijoueur</Text>
               <Text style={styles.multiplayerMeta}>
-                Créer une salle à distance
+                Créer ou rejoindre une salle à distance
               </Text>
             </View>
             <Text style={styles.multiplayerArrow}>→</Text>
