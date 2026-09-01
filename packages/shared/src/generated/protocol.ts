@@ -35,6 +35,7 @@ export type MessageType = string;
 /**
  * Client → serveur.
  */
+export const TypeCreate: MessageType = "create";
 export const TypeJoin: MessageType = "join";
 export const TypeLeave: MessageType = "leave";
 /**
@@ -67,7 +68,18 @@ export interface Room {
   players: Player[];
 }
 /**
- * JoinPayload — charge utile de TypeJoin.
+ * CreatePayload — charge utile de TypeCreate. Le serveur alloue un nouveau
+ * code de room et y ajoute directement l'émetteur comme premier joueur (pas
+ * de round-trip create puis join pour le créateur) ; la réponse est un
+ * TypeRoomState classique, code inclus.
+ */
+export interface CreatePayload {
+  playerName: string;
+}
+/**
+ * JoinPayload — charge utile de TypeJoin. Utilisé par tout joueur qui
+ * rejoint une room existante après sa création, créateur exclu (voir
+ * CreatePayload).
  */
 export interface JoinPayload {
   roomCode: string;

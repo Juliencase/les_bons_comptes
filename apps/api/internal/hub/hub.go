@@ -26,8 +26,28 @@
 //     `register`, `unregister` et `inbound`. Chaque case fait muter `rooms`.
 //  2. `HandleConn` : boucle de lecture de la socket, décodage en
 //     `protocol.Envelope`, envoi vers `inbound`, et `unregister` en `defer`.
-//  3. La diffusion : sur un `inbound` de type `join`/`leave`, recalculer l'état
-//     de la salle et le pousser à chaque client de cette salle.
+//  3. La diffusion : sur un `inbound` de type `create`/`join`/`leave`,
+//     recalculer l'état de la salle et le pousser à chaque client de cette
+//     salle.
+//  4. `create` (`protocol.TypeCreate`) : générer un code à 4 chiffres inédit
+//     dans `rooms` (redemander tant qu'il y a collision — `rooms` n'est lu
+//     que depuis `Run`, donc la vérification d'unicité s'y fait sans
+//     verrou), créer l'entrée de room, y ajouter l'émetteur comme premier
+//     `*Client`, répondre par un `room_state`. Contrairement à `join`,
+//     `create` ne peut pas échouer sur « code inconnu ».
+//  5. `join` (`protocol.TypeJoin`) : ajouter l'émetteur à la room désignée
+//     par `JoinPayload.RoomCode` si elle existe, sinon répondre une erreur
+//     (`protocol.TypeError`) — ne jamais créer la room à la volée ici,
+//     c'est le rôle exclusif de `create`.
+//  6. Nettoyage des rooms vides : quand le dernier `*Client` d'une room part
+//     (déconnexion via `unregister`, ou `leave` explicite), ne pas supprimer
+//     la room immédiatement — démarrer un délai de grâce de 5 minutes avant
+//     suppression, annulable si quelqu'un rejoint entretemps (`join` avec ce
+//     code). Le minuteur doit lui aussi être piloté depuis `Run` (par
+//     exemple un `time.AfterFunc` qui poste un message dédié sur un channel
+//     interne plutôt que de toucher `rooms` depuis sa propre goroutine) :
+//     toucher `rooms` en dehors de `Run`, même pour un cleanup, reste la
+//     même data race que partout ailleurs dans ce fichier.
 //
 // # Les trois pièges qui t'attendent
 //

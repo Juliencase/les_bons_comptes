@@ -8,6 +8,7 @@ import {
   isEnvelope,
   isKnownMessageType,
   KNOWN_MESSAGE_TYPES,
+  TypeCreate,
   TypeError as TypeErrorMessage,
   TypeJoin,
   TypeLeave,
@@ -24,10 +25,16 @@ describe('contrat partagé', () => {
   // Garde anti-dérive : tygo aplatit `type MessageType string` en `string`, donc
   // rien côté TS ne relie les constantes générées à la liste tenue à la main.
   it('connaît tous les types de messages définis côté Go', () => {
-    for (const type of [TypeJoin, TypeLeave, TypeRoomState, TypeErrorMessage]) {
+    for (const type of [
+      TypeCreate,
+      TypeJoin,
+      TypeLeave,
+      TypeRoomState,
+      TypeErrorMessage,
+    ]) {
       expect(isKnownMessageType(type)).toBe(true);
     }
-    expect(KNOWN_MESSAGE_TYPES).toHaveLength(4);
+    expect(KNOWN_MESSAGE_TYPES).toHaveLength(5);
   });
 
   it('rejette un type de message inventé', () => {
