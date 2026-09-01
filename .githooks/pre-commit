@@ -6,8 +6,10 @@ if command -v gitleaks >/dev/null 2>&1; then
   gitleaks protect --staged --redact -v || exit 1
 fi
 
+# le pathspec exclut packages/shared/src/generated: ce TS est genere par tygo,
+# le reformater ferait echouer le job `contract` de la CI (cf. .prettierignore)
 if [ -x node_modules/.bin/eslint ] && [ -x node_modules/.bin/prettier ]; then
-  js_files=$(git diff --cached --name-only --diff-filter=ACM -- '*.js' '*.jsx' '*.ts' '*.tsx')
+  js_files=$(git diff --cached --name-only --diff-filter=ACM -- '*.js' '*.jsx' '*.ts' '*.tsx' ':(exclude)packages/shared/src/generated/*')
   if [ -n "$js_files" ]; then
     node_modules/.bin/prettier --write $js_files
     node_modules/.bin/eslint --fix $js_files

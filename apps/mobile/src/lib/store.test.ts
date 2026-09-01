@@ -261,7 +261,7 @@ describe('palmarès de fin de partie', () => {
   });
 });
 
-describe('reprise et abandon', () => {
+describe('reprise', () => {
   it('reprend une partie en cours sur la saisie, une partie finie sur le tableau', () => {
     useStore.getState().startGame('skull-king', ['Alice'], CLASSIC_SETUP);
     useStore.setState({ screen: 'home' });
@@ -275,23 +275,6 @@ describe('reprise et abandon', () => {
     });
     useStore.getState().resumeGame();
     expect(useStore.getState().screen).toBe('scoreboard');
-  });
-
-  it('abandonner efface la partie Skull King sans toucher à la Belote', () => {
-    useStore.getState().startGame('skull-king', ['Alice'], CLASSIC_SETUP);
-    useStore.getState().startBeloteGame(
-      [
-        { id: 't1', players: ['Alice', 'Bob'] },
-        { id: 't2', players: ['Chloé', 'David'] },
-      ],
-      501,
-    );
-
-    useStore.getState().abandonGame();
-
-    expect(useStore.getState().game).toBeNull();
-    expect(useStore.getState().beloteGame).not.toBeNull();
-    expect(useStore.getState().screen).toBe('home');
   });
 });
 

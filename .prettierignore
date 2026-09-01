@@ -1,0 +1,19 @@
+# Fichiers que Prettier ne doit jamais reecrire.
+#
+# Le hook `.githooks/pre-commit` lance `prettier --write` sur tout fichier
+# .ts/.tsx indexe, et `npm run format` (make fmt) sur tout le depot : sans
+# cette liste, les deux touchent des fichiers dont le contenu ne leur
+# appartient pas.
+
+# Types generes depuis les structs Go. Prettier les reformaterait (guillemets
+# simples au lieu des guillemets doubles emis par tygo) ; le job `contract` de
+# la CI regenere puis refuse la moindre derive, donc un passage de Prettier ici
+# suffit a rendre la CI rouge.
+packages/shared/src/generated/
+
+# Sorties de build : export web Expo et bundles de verification.
+apps/mobile/dist/
+dist-check/
+
+# Ecrit par npm lui-meme : le reformater cree une derive a chaque install.
+package-lock.json

@@ -59,7 +59,32 @@ jobs:
       - name: Régénérer et vérifier l'absence de dérive
         # Si ce job échoue, c'est qu'un struct de internal/protocol a changé
         # sans que `make generate` ait été relancé et le résultat commité.
+        # tygo vient de reecrire la copie de travail : elle fait foi. On demande
+        # donc si l'index puis HEAD lui correspondent, et `ls-files --others`
+        # attrape un fichier genere encore non suivi qu'aucun diff ne montrerait.
         run: |
           cd apps/api && go tool tygo generate
           cd "$GITHUB_WORKSPACE"
-          git diff --exit-code packages/shared/src/generated
+          git diff --exit-code -- packages/shared/src/generated
+          git diff HEAD --exit-code -- packages/shared/src/generated
+          new=$(git ls-files --others --exclude-standard packages/shared/src/generated)
+          if [ -n "$new" ]; then
+            echo "Fichiers generes non suivis :"; echo "$new"
+            exit 1
+          fi
+
+  images:
+    name: Images Docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Les deux images se construisent depuis la racine du monorepo et leurs
+      # `COPY` enumerent a la main les fichiers qui y vivent (lockfile,
+      # manifestes des workspaces, tsconfig.base.json). Un deplacement de
+      # fichier casse donc un build que rien d'autre ne verifie : sans ce job,
+      # le premier signal serait un deploiement rouge sur le Pi, `main` deja
+      # fusionne. Rien n'est pousse, on ne verifie que la construction.
+      - name: Image web (export Expo)
+        run: docker build -f apps/mobile/Dockerfile -t les-bons-comptes:ci .
+      - name: Image API (Go)
+        run: docker build -f apps/api/Dockerfile -t les-bons-comptes-api:ci .

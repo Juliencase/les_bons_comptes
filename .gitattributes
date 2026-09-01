@@ -1,0 +1,21 @@
+# Normalisation des fins de ligne.
+#
+# Le depot se developpe sous Windows (core.autocrlf=true pose des CRLF dans la
+# copie de travail) mais se verifie sous Linux. Les outils qui n'acceptent que
+# LF echouaient donc en local alors que la CI passait : `gofmt -l .` listait
+# *tous* les fichiers Go, rendant `make check` — la commande a lancer avant de
+# pousser — impossible a faire passer sur la machine de dev.
+* text=auto eol=lf
+
+# Binaires : ne jamais convertir.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.apk binary
+*.aab binary
+*.keystore binary

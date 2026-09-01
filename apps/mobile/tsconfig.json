@@ -1,3 +1,9 @@
 {
-  "extends": ["expo/tsconfig.base", "../../tsconfig.base.json"]
+  // `include` / `exclude` explicites : sans eux tsc prend tout ce que contient
+  // apps/mobile, et `expo/tsconfig.base` n'exclut que node_modules/android/ios.
+  // Après un `npm run build:web`, le bundle exporté dans `dist/` (des centaines
+  // de Ko de JS, tirés par `allowJs`) se retrouvait donc dans le typecheck.
+  "extends": ["expo/tsconfig.base", "../../tsconfig.base.json"],
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules", "dist", "dist-check", ".expo", "android", "ios"]
 }

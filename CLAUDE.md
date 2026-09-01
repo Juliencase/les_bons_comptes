@@ -64,7 +64,10 @@ TypeScript side never needs a Go toolchain to build.
 The rule that follows: **never hand-edit anything under
 `packages/shared/src/generated/`.** Change the Go struct, run `make generate`,
 commit both. CI enforces this — the `contract` job regenerates and fails on any
-diff.
+diff. "Never hand-edit" covers the tools too: a root `.prettierignore` keeps
+`make fmt` off that directory, and the pre-commit hook excludes it from its
+`prettier --write` pass — Prettier would rewrite tygo's double quotes and turn
+the next push red.
 
 `packages/shared/src/index.ts` is hand-written and re-exports the generated
 types, plus the few things tygo cannot express (it flattens `type X string`
@@ -80,12 +83,21 @@ consumers import `@lbc/shared`, never the generated file directly.
 | --- | --- |
 | JS/TS | `npm run typecheck`, `npm test`, `npm run lint` |
 | Go | `gofmt -l .`, `go vet ./...`, `go test -race ./...` |
-| Contract | `make generate` then `git diff --exit-code` on the generated TS |
+| Contract | `make generate`, then diff index/HEAD + `git ls-files --others` on it |
+| Images | `docker build` of both Dockerfiles — CI only, `make images` locally |
 
 **`go test -race` only runs in CI.** It needs cgo and a C compiler, which the
 usual Windows dev box does not have — `make test-go` (no `-race`) is the local
 equivalent, and `make test-race` will fail with "requires cgo" unless mingw is
 installed. Don't claim the race detector passed based on a local run.
+
+**The `images` job is not part of `make check` either** — building both images
+takes minutes. It exists because the two Dockerfiles hand-enumerate the
+root-level files they `COPY` (lockfile, workspace manifests,
+`tsconfig.base.json`), so moving or renaming one of those breaks a build that
+nothing else checks; without the job the first signal would be a failed deploy
+on the Pi with `main` already merged. Run `make images` locally when you touch
+a Dockerfile or the repo's root layout.
 
 `.githooks/pre-commit` auto-fixes ESLint/Prettier and restages, blocking only
 on a remaining ESLint error, runs `gofmt -w` on staged `.go` files and
@@ -94,7 +106,10 @@ Activate it with `git config core.hooksPath .githooks`.
 
 ## Deployment
 
-`.github/workflows/deploy.yml` deploys to a Raspberry Pi on push to `main`;
+`.github/workflows/deploy.yml` deploys to a Raspberry Pi on push to `main` —
+build and start only, no quality gate: those belong to `ci.yml`, which runs on
+GitHub runners before the merge, and re-running them on the Pi only made
+deploys slower;
 `docker-compose.yml` describes both services behind Traefik
 (`les-bons-comptes.valodin.fr` for the web build, `lbc-api.valodin.fr` for
 the API — one label deep, because Cloudflare's free certificate covers

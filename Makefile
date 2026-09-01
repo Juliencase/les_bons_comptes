@@ -24,7 +24,7 @@ endif
 .DEFAULT_GOAL := help
 
 .PHONY: help install dev-mobile dev-api generate check check-js check-go \
-        check-generated test test-js test-go test-race lint fmt
+        check-generated test test-js test-go test-race images lint fmt
 
 help: ## Affiche cette aide
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -57,8 +57,18 @@ check-go: ## gofmt + vet + tests
 	cd $(API) && go test ./...
 
 check-generated: generate ## Échoue si le TS généré a dérivé du Go
-	@git diff --exit-code $(SHARED)/src/generated \
+# `generate` vient de reecrire la copie de travail : elle fait foi. Les deux
+# diffs demandent donc « l'index correspond-il ? » puis « HEAD correspond-il ? »,
+# et `ls-files --others` attrape un fichier genere encore non suivi, qu'aucun
+# des deux ne montrerait.
+	@git diff --exit-code -- $(SHARED)/src/generated \
 		|| (echo ""; echo "Les types generes ont derive : commite le resultat de 'make generate'."; exit 1)
+	@git diff HEAD --exit-code -- $(SHARED)/src/generated \
+		|| (echo ""; echo "Les types generes ont derive : commite le resultat de 'make generate'."; exit 1)
+	@new=$$(git ls-files --others --exclude-standard $(SHARED)/src/generated); \
+		if [ -n "$$new" ]; then \
+			echo ""; echo "Fichiers generes non suivis :"; echo "$$new"; exit 1; \
+		fi
 
 test: test-js test-go ## Tous les tests
 
@@ -70,6 +80,10 @@ test-go: ## Tests Go
 
 test-race: ## Tests Go avec le detecteur de races (requiert cgo + un compilateur C)
 	cd $(API) && CGO_ENABLED=1 go test -race ./...
+
+images: ## Construit les deux images Docker (ce que la CI verifie, hors `make check`)
+	docker build -f apps/mobile/Dockerfile -t les-bons-comptes:local .
+	docker build -f $(API)/Dockerfile -t les-bons-comptes-api:local .
 
 lint: ## eslint sur le JS/TS
 	npm run lint

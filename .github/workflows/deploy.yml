@@ -1,5 +1,11 @@
 name: Deploy
 
+# Ce workflow tourne sur le Pi : il ne fait que construire et demarrer les
+# images. Les gates de qualite (typecheck, tests, lint, gofmt, vet, contrat)
+# appartiennent a `ci.yml`, qui tourne sur des runners GitHub avant la fusion —
+# les rejouer ici ne ferait que rallonger le deploiement sur une machine lente,
+# sans rien attraper de nouveau.
+
 on:
   push:
     branches: [main]
@@ -9,12 +15,5 @@ jobs:
     runs-on: [self-hosted, pi]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-      - name: Lint
-        run: |
-          npm ci
-          npm run lint
       - name: Build and deploy
         run: docker compose up -d --build
