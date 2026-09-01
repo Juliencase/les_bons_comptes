@@ -162,7 +162,6 @@ type Actions = {
   setScreen: (s: Screen) => void;
   startGame: (gameKey: string, names: string[], setup: GameSetup) => void;
   resumeGame: () => void;
-  abandonGame: () => void;
   setBid: (round: number, playerId: string, value: number) => void;
   setTricks: (round: number, playerId: string, value: number) => void;
   setBonus: (round: number, playerId: string, value: number) => void;
@@ -207,8 +206,6 @@ export const useStore = create<State & Actions>()(
         if (!g) return;
         set({ screen: g.finishedAt ? 'scoreboard' : 'round' });
       },
-
-      abandonGame: () => set({ game: null, screen: 'home' }),
 
       setBid: (round, playerId, value) =>
         set((state) => updateEntry(state, round, playerId, { bid: value })),

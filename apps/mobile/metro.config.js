@@ -30,8 +30,10 @@
 // sauterait en silence — c'est-à-dire exactement la page blanche décrite plus
 // haut, mais sans erreur visible.
 //
-// Si un jour zustand cesse de publier ce build (fichier absent), on retombe
-// silencieusement sur la résolution par défaut plutôt que de casser le bundle.
+// Si un jour zustand cesse de publier ce build (fichier absent, ou paquet
+// introuvable), on retombe sur la résolution par défaut plutôt que de faire
+// échouer le bundling — mais en le criant dans la console. Le symptôme, sinon,
+// est une page blanche en production sans la moindre trace d'erreur.
 const fs = require('fs');
 const path = require('path');
 const { getDefaultConfig } = require('expo/metro-config');
@@ -63,19 +65,38 @@ function resolveZustandDir() {
 
 const ZUSTAND_DIR = resolveZustandDir();
 
+// Une fois par raison : le résolveur est appelé pour chaque import de zustand,
+// on ne veut pas noyer la sortie du bundler sous le même message.
+const warned = new Set();
+function warnWorkaroundOff(reason) {
+  if (warned.has(reason)) return;
+  warned.add(reason);
+  console.warn(
+    `[metro] contournement zustand/web désactivé (${reason}) — le bundle web ` +
+      `contiendra probablement « import.meta » et ne se chargera pas.`,
+  );
+}
+
 config.resolver.resolveRequest = (context, moduleName, platform) => {
-  if (
-    ZUSTAND_DIR &&
-    platform === 'web' &&
-    (moduleName === 'zustand' || moduleName.startsWith('zustand/'))
-  ) {
-    const subpath =
-      moduleName === 'zustand' ? 'index' : moduleName.slice('zustand/'.length);
-    const filePath = path.join(ZUSTAND_DIR, `${subpath}.js`);
-    if (fs.existsSync(filePath)) {
-      return { type: 'sourceFile', filePath };
+  const isZustand =
+    moduleName === 'zustand' || moduleName.startsWith('zustand/');
+
+  if (platform === 'web' && isZustand) {
+    if (!ZUSTAND_DIR) {
+      warnWorkaroundOff('paquet introuvable via require.resolve');
+    } else {
+      const subpath =
+        moduleName === 'zustand'
+          ? 'index'
+          : moduleName.slice('zustand/'.length);
+      const filePath = path.join(ZUSTAND_DIR, `${subpath}.js`);
+      if (fs.existsSync(filePath)) {
+        return { type: 'sourceFile', filePath };
+      }
+      warnWorkaroundOff(`build CommonJS absent : ${filePath}`);
     }
   }
+
   return context.resolveRequest(context, moduleName, platform);
 };
 

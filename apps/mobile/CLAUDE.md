@@ -45,6 +45,7 @@ npx jest src/lib/scoring.test.ts          # Skull King engine tests (unit)
 npx jest src/lib/belote/scoring.test.ts   # Belote engine tests (unit)
 npx jest src/lib/store.test.ts            # Skull King store tests (flows + migrations)
 npx jest src/lib/stats.test.ts            # Skull King end-of-game awards
+npx jest src/lib/shared.test.ts           # @lbc/shared contract guards + resolution
 ```
 
 Lint and format are configured **at the repo root** (`eslint.config.js`,
@@ -63,6 +64,13 @@ in the `jest` key of this package's `package.json`), on two levels:
   from `store.ts` for that reason). It mocks AsyncStorage with the package's
   own jest mock, at the top of the file — there is no global jest setup file.
   Belote has no store-level tests yet.
+- **contract** — `src/lib/shared.test.ts` covers `@lbc/shared`'s hand-written
+  guards (`isEnvelope`, `isKnownMessageType`) and, by importing the package at
+  all, is what proves it stays consumable from here: `packages/shared` ships
+  TypeScript source with no build step, so this test is the only thing
+  exercising the workspace resolution and the Jest transform for it. It lives
+  in this app rather than in `packages/shared` because the app is the consumer
+  — and because Jest is configured here, not there.
 
 There are **no component/screen tests**: `@testing-library/react-native` is not
 a dependency, so UI changes are only covered by the typecheck. Verify changes
@@ -78,6 +86,10 @@ it are load-bearing:
   most of the tree — zustand, for one, is physically absent from
   `apps/mobile/node_modules`.
 - The `resolveRequest` override forcing zustand's CJS files **on web only**.
+  It fails open (default resolution) if zustand ever stops shipping those
+  files, but now prints a `[metro] contournement zustand/web désactivé`
+  warning when it does — the symptom otherwise is a blank web page with no
+  error at all.
   Zustand's ESM build contains `import.meta`, which a classic `<script>`
   bundle cannot parse — the deployed web app renders a blank page. The
   regression is silent (build succeeds, page is empty), so the check is:
