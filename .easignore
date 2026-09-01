@@ -1,4 +1,13 @@
 # Fichiers exclus de l'upload vers EAS Build (compilation cloud).
+#
+# Ce fichier reste a la racine du monorepo et non dans apps/mobile : l'archive
+# envoyee a EAS est enracinee au depot (le lockfile et les manifestes des
+# workspaces vivent ici, `npm ci` en a besoin), donc les motifs ci-dessous sont
+# relatifs a cette racine.
 docs/
 dist-check/
 *.pdf
+
+# Depuis le passage en monorepo : rien de tout ceci ne sert a une build Android.
+apps/api/
+apps/mobile/dist/

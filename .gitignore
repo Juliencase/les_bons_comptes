@@ -36,9 +36,10 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# generated native folders
-/ios
-/android
+# generated native folders — l'app Expo vit dans apps/mobile/, les ancres
+# racine d'avant le monorepo n'y correspondaient plus
+apps/mobile/ios/
+apps/mobile/android/
 
 # Dossiers temporaires de build/test
 dist-check/
