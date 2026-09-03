@@ -51,6 +51,7 @@ export default function RoomScreen() {
     room,
     errorMessage,
     isResuming,
+    isCreator,
     createRoom,
     joinRoom,
     leaveRoom,
@@ -106,6 +107,12 @@ export default function RoomScreen() {
       : isJoinMode
         ? 'Rejoindre la salle'
         : 'Créer la salle';
+
+  // Le créateur qui quitte fait littéralement disparaître la salle pour tout
+  // le monde (le hub la supprime et prévient les autres joueurs) — un simple
+  // participant, lui, ne fait que sortir sans affecter la salle. Le libellé
+  // doit dire ce qui se passe réellement plutôt que rester générique.
+  const leaveLabel = isCreator ? 'Supprimer la salle' : 'Quitter la salle';
 
   return (
     <ScreenBackground>
@@ -231,7 +238,7 @@ export default function RoomScreen() {
             {isInRoom && (
               <View style={styles.footer}>
                 <Button
-                  label="Quitter la salle"
+                  label={leaveLabel}
                   onPress={leaveRoom}
                   variant="destructive"
                 />

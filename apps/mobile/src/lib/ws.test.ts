@@ -130,15 +130,25 @@ describe('roomSession', () => {
   });
 
   it('relit exactement la session sauvegardée', async () => {
-    await saveRoomSession({ roomCode: '1234', playerName: 'Alice' });
+    await saveRoomSession({ roomCode: '1234', playerName: 'Alice', isCreator: false });
     expect(await loadRoomSession()).toEqual({
       roomCode: '1234',
       playerName: 'Alice',
+      isCreator: false,
+    });
+  });
+
+  it("conserve isCreator: true (session d'un créateur de salle)", async () => {
+    await saveRoomSession({ roomCode: '1234', playerName: 'Alice', isCreator: true });
+    expect(await loadRoomSession()).toEqual({
+      roomCode: '1234',
+      playerName: 'Alice',
+      isCreator: true,
     });
   });
 
   it('efface la session persistée', async () => {
-    await saveRoomSession({ roomCode: '1234', playerName: 'Alice' });
+    await saveRoomSession({ roomCode: '1234', playerName: 'Alice', isCreator: false });
     await clearRoomSession();
     expect(await loadRoomSession()).toBeNull();
   });
@@ -155,6 +165,16 @@ describe('roomSession', () => {
     const spy = jest
       .spyOn(AsyncStorage, 'getItem')
       .mockResolvedValueOnce(JSON.stringify({ foo: 'bar' }));
+    expect(await loadRoomSession()).toBeNull();
+    spy.mockRestore();
+  });
+
+  it('ignore une session sans isCreator (ancien format persisté)', async () => {
+    const spy = jest
+      .spyOn(AsyncStorage, 'getItem')
+      .mockResolvedValueOnce(
+        JSON.stringify({ roomCode: '1234', playerName: 'Alice' }),
+      );
     expect(await loadRoomSession()).toBeNull();
     spy.mockRestore();
   });

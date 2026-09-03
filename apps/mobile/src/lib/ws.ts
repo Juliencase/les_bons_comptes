@@ -61,12 +61,16 @@ type RoomSocketState = {
   status: RoomConnectionStatus;
   room: Room | null;
   errorMessage: string | null;
+  // `true` quand la session courante vient de createRoom(), `false` sinon
+  // (joinRoom(), ou hors de toute salle) — voir PendingSession.
+  isCreator: boolean;
 };
 
 const IDLE_STATE: RoomSocketState = {
   status: 'idle',
   room: null,
   errorMessage: null,
+  isCreator: false,
 };
 
 // Message affiché à l'utilisateur : jamais le détail technique (code réseau,
@@ -78,11 +82,16 @@ const CONNECTION_FAILED_MESSAGE =
 // reconnexion — que la connexion d'origine ait été un `create` ou un `join`,
 // un retry est toujours un `join` vers la salle déjà rejointe (voir `connect`
 // plus bas). `roomCode` vaut '' tant que le serveur ne l'a pas confirmé (juste
-// après un `create`, avant la toute première `room_state`).
+// après un `create`, avant la toute première `room_state`). `isCreator`
+// distingue une session née d'un createRoom() d'une session née d'un
+// joinRoom() — purement informatif côté client (le hub ne traite plus une
+// reconnexion comme celle du créateur, voir hub.go), utilisé uniquement pour
+// adapter la copie de RoomScreen.
 type PendingSession = {
   roomCode: string;
   playerName: string;
   playerId: string;
+  isCreator: boolean;
 };
 
 function buildJoinEnvelope(session: PendingSession): Envelope {
@@ -114,6 +123,13 @@ function buildJoinEnvelope(session: PendingSession): Envelope {
  * d'une session persistée (voir plus bas) se conclue, pour que l'appelant
  * masque le formulaire créer/rejoindre pendant ce délai au lieu de
  * l'afficher en flash avant bascule vers la salle retrouvée.
+ *
+ * Et `isCreator` : `true` quand la session courante vient d'un `createRoom()`
+ * (y compris retrouvée par la reprise automatique), `false` sinon — hors de
+ * toute salle ou après un `joinRoom()`. Purement déclaratif côté client, à
+ * l'usage de l'affichage (ex. RoomScreen distingue "Supprimer la salle" de
+ * "Quitter la salle") : voir la limite documentée sur `roomCreators` dans
+ * hub.go, une reconnexion n'étant plus reconnue comme créatrice côté serveur.
  */
 export function useRoomSocket() {
   const [state, setState] = useState<RoomSocketState>(IDLE_STATE);
@@ -191,15 +207,22 @@ export function useRoomSocket() {
           void saveRoomSession({
             roomCode: payload.room.code,
             playerName: session.playerName,
+            isCreator: session.isCreator,
           });
         }
-        setState({ status: 'connected', room: payload.room, errorMessage: null });
+        setState({
+          status: 'connected',
+          room: payload.room,
+          errorMessage: null,
+          isCreator: session?.isCreator ?? false,
+        });
       } else if (envelope.type === TypeErrorMessage) {
         const payload = envelope.data as ErrorPayload | null;
         setState({
           status: 'error',
           room: null,
           errorMessage: payload?.message || CONNECTION_FAILED_MESSAGE,
+          isCreator: false,
         });
       } else if (envelope.type === TypeRoomClosed) {
         const payload = envelope.data as RoomClosedPayload | null;
@@ -221,7 +244,12 @@ export function useRoomSocket() {
         socketRef.current = null;
         socket.close();
         void clearRoomSession();
-        setState({ status: 'error', room: null, errorMessage: payload.message });
+        setState({
+          status: 'error',
+          room: null,
+          errorMessage: payload.message,
+          isCreator: false,
+        });
       }
     };
 
@@ -243,6 +271,7 @@ export function useRoomSocket() {
             status: 'error',
             room: null,
             errorMessage: CONNECTION_FAILED_MESSAGE,
+            isCreator: false,
           };
         }
 
@@ -253,7 +282,12 @@ export function useRoomSocket() {
           connect(() => buildJoinEnvelope(session));
         }, computeBackoffDelayMs(attempt));
 
-        return { status: 'reconnecting', room: prev.room, errorMessage: null };
+        return {
+          status: 'reconnecting',
+          room: prev.room,
+          errorMessage: null,
+          isCreator: session.isCreator,
+        };
       });
     };
   }, []);
@@ -263,7 +297,7 @@ export function useRoomSocket() {
       clearReconnectTimer();
       closeSocket();
       reconnectAttemptRef.current = 0;
-      setState({ status: 'connecting', room: null, errorMessage: null });
+      setState({ status: 'connecting', room: null, errorMessage: null, isCreator: true });
 
       const requestId = ++requestIdRef.current;
       void getOrCreatePlayerId().then((playerId) => {
@@ -272,7 +306,12 @@ export function useRoomSocket() {
         if (requestIdRef.current !== requestId) return;
         // Code de salle inconnu jusqu'à la première `room_state` : voir
         // PendingSession.
-        const session: PendingSession = { roomCode: '', playerName, playerId };
+        const session: PendingSession = {
+          roomCode: '',
+          playerName,
+          playerId,
+          isCreator: true,
+        };
         sessionRef.current = session;
         connect(() => {
           const payload: CreatePayload = { playerName, playerId };
@@ -283,17 +322,27 @@ export function useRoomSocket() {
     [clearReconnectTimer, closeSocket, connect],
   );
 
+  // `isCreator` par défaut à `false` pour un appel normal (rejoindre une
+  // salle n'en fait jamais le créateur) ; la reprise automatique plus bas le
+  // passe explicitement à la valeur mémorisée dans la session persistée, pour
+  // ne pas la perdre en rejouant un `join` là où l'utilisateur avait fait un
+  // `create`.
   const joinRoom = useCallback(
-    (roomCode: string, playerName: string) => {
+    (roomCode: string, playerName: string, isCreator = false) => {
       clearReconnectTimer();
       closeSocket();
       reconnectAttemptRef.current = 0;
-      setState({ status: 'connecting', room: null, errorMessage: null });
+      setState({ status: 'connecting', room: null, errorMessage: null, isCreator });
 
       const requestId = ++requestIdRef.current;
       void getOrCreatePlayerId().then((playerId) => {
         if (requestIdRef.current !== requestId) return;
-        const session: PendingSession = { roomCode, playerName, playerId };
+        const session: PendingSession = {
+          roomCode,
+          playerName,
+          playerId,
+          isCreator,
+        };
         sessionRef.current = session;
         connect(() => buildJoinEnvelope(session));
       });
@@ -342,7 +391,7 @@ export function useRoomSocket() {
         return;
       }
       resumingRef.current = true;
-      joinRoom(session.roomCode, session.playerName);
+      joinRoom(session.roomCode, session.playerName, session.isCreator);
     });
     return () => {
       cancelled = true;

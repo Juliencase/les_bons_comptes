@@ -1,9 +1,13 @@
-// Session de room persistée : { roomCode, playerName } sauvegardés dès qu'une
-// connexion aboutit, pour proposer une reprise automatique si RoomScreen
-// remonte plus tard (app relancée après une coupure prolongée) plutôt que
-// d'afficher le formulaire vide. Effacée par un leaveRoom() explicite — le
-// playerId (src/lib/playerIdentity.ts) n'en fait pas partie : il reste stable
-// pour la vie de l'app, indépendamment d'une session de room donnée.
+// Session de room persistée : { roomCode, playerName, isCreator } sauvegardés
+// dès qu'une connexion aboutit, pour proposer une reprise automatique si
+// RoomScreen remonte plus tard (app relancée après une coupure prolongée)
+// plutôt que d'afficher le formulaire vide. `isCreator` distingue le joueur
+// qui a créé la salle (createRoom()) de celui qui l'a rejointe (joinRoom()) —
+// voir PendingSession dans ws.ts, qui la reporte à travers la reprise
+// automatique alors que celle-ci rejoue toujours un `join`. Effacée par un
+// leaveRoom() explicite — le playerId (src/lib/playerIdentity.ts) n'en fait
+// pas partie : il reste stable pour la vie de l'app, indépendamment d'une
+// session de room donnée.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORAGE_KEY = 'lbc:roomSession';
@@ -11,6 +15,7 @@ const STORAGE_KEY = 'lbc:roomSession';
 export type RoomSession = {
   roomCode: string;
   playerName: string;
+  isCreator: boolean;
 };
 
 function isRoomSession(value: unknown): value is RoomSession {
@@ -18,7 +23,8 @@ function isRoomSession(value: unknown): value is RoomSession {
     typeof value === 'object' &&
     value !== null &&
     typeof (value as RoomSession).roomCode === 'string' &&
-    typeof (value as RoomSession).playerName === 'string'
+    typeof (value as RoomSession).playerName === 'string' &&
+    typeof (value as RoomSession).isCreator === 'boolean'
   );
 }
 
