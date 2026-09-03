@@ -1,7 +1,10 @@
 // Écran multijoueur : créer une salle à distance ou en rejoindre une avec un
 // code (WebSocket, apps/api). Une coupure après connexion passe par l'état
 // `reconnecting` (useRoomSocket) : la salle reste affichée, avec une petite
-// bannière, plutôt que de retomber sur le formulaire.
+// bannière, plutôt que de retomber sur le formulaire. Au montage, tant que
+// `isResuming` (useRoomSocket) est vrai — le temps de savoir si une session
+// persistée doit être retrouvée — ni le formulaire ni la salle ne s'affichent,
+// pour éviter le flash du formulaire vide avant bascule sur la salle en cours.
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -43,8 +46,15 @@ export default function RoomScreen() {
   const [playerName, setPlayerName] = useState('');
   const [roomCode, setRoomCode] = useState('');
   const codeInputRef = useRef<TextInput>(null);
-  const { status, room, errorMessage, createRoom, joinRoom, leaveRoom } =
-    useRoomSocket();
+  const {
+    status,
+    room,
+    errorMessage,
+    isResuming,
+    createRoom,
+    joinRoom,
+    leaveRoom,
+  } = useRoomSocket();
 
   // Préremplit le nom avec la dernière valeur mémorisée (voir submit, qui la
   // met à jour) — seulement si l'utilisateur n'a rien tapé entre-temps.
@@ -114,7 +124,14 @@ export default function RoomScreen() {
               contentContainerStyle={styles.body}
               keyboardShouldPersistTaps="handled"
             >
-              {isInRoom && room ? (
+              {isResuming ? (
+                <View style={styles.connecting}>
+                  <ActivityIndicator color={colors.sanguine} />
+                  <Text style={styles.connectingText}>
+                    Reprise de la salle…
+                  </Text>
+                </View>
+              ) : isInRoom && room ? (
                 <View style={styles.room}>
                   {isReconnecting && (
                     <View style={styles.connecting}>
@@ -199,7 +216,7 @@ export default function RoomScreen() {
               )}
             </ScrollView>
 
-            {!isInRoom && (
+            {!isResuming && !isInRoom && (
               <View style={styles.footer}>
                 <Button
                   label={submitLabel}

@@ -106,6 +106,11 @@ function buildJoinEnvelope(session: PendingSession): Envelope {
  * (voir `packages/shared/src/generated/protocol.ts`), une reconnexion
  * recrée côté serveur un nouveau joueur dans la salle : compromis accepté
  * pour cette phase, pas de tentative de le masquer côté client.
+ *
+ * Expose aussi `isResuming` : `true` le temps que la reprise automatique
+ * d'une session persistée (voir plus bas) se conclue, pour que l'appelant
+ * masque le formulaire créer/rejoindre pendant ce délai au lieu de
+ * l'afficher en flash avant bascule vers la salle retrouvée.
  */
 export function useRoomSocket() {
   const [state, setState] = useState<RoomSocketState>(IDLE_STATE);
@@ -119,6 +124,18 @@ export function useRoomSocket() {
   // asynchrone du playerId d'un appel devenu obsolète (createRoom/joinRoom
   // rappelé, ou leaveRoom, avant que `getOrCreatePlayerId` ait répondu).
   const requestIdRef = useRef(0);
+  // `true` tant qu'un `join` automatique (déclenché par la session persistée
+  // au montage, voir plus bas) est en cours : le composant appelant s'en sert
+  // pour masquer le formulaire créer/rejoindre le temps de savoir si la
+  // reprise réussit, plutôt que de l'afficher en flash avant bascule vers la
+  // salle retrouvée. N'a aucun rapport avec `connecting`/`reconnecting`, qui
+  // couvrent aussi les tentatives manuelles.
+  const [isResuming, setIsResuming] = useState(true);
+  // Miroir de `isResuming` lisible de façon synchrone dans l'effet ci-dessous
+  // (qui réagit à `status`) : distingue une reprise automatique en cours
+  // d'une simple connexion manuelle, pour ne couper `isResuming` que quand
+  // c'est bien elle qui atteint un état terminal.
+  const resumingRef = useRef(false);
 
   const clearReconnectTimer = useCallback(() => {
     if (reconnectTimerRef.current != null) {
@@ -275,22 +292,45 @@ export function useRoomSocket() {
 
   // Reprise automatique : si une session de salle a survécu au montage
   // précédent (app relancée pendant une partie), on retente un `join`
-  // immédiat plutôt que d'afficher le formulaire vide.
+  // immédiat plutôt que d'afficher le formulaire vide. `isResuming` reste
+  // `true` le temps de cet appel — voir l'effet suivant, qui l'éteint une
+  // fois `status` arrivé à un état terminal.
   useEffect(() => {
     let cancelled = false;
     const requestId = requestIdRef.current;
     void loadRoomSession().then((session) => {
-      if (cancelled || !session) return;
+      if (cancelled) return;
       // Un appel manuel (createRoom/joinRoom/leaveRoom) est survenu pendant
       // la lecture d'AsyncStorage : ne pas écraser l'action de l'utilisateur
-      // avec la session persistée, potentiellement obsolète.
-      if (requestIdRef.current !== requestId) return;
+      // avec la session persistée, potentiellement obsolète, ni bloquer
+      // l'écran sur `isResuming` puisqu'aucune reprise auto n'aura lieu.
+      if (!session || requestIdRef.current !== requestId) {
+        setIsResuming(false);
+        return;
+      }
+      resumingRef.current = true;
       joinRoom(session.roomCode, session.playerName);
     });
     return () => {
       cancelled = true;
     };
   }, [joinRoom]);
+
+  // Éteint `isResuming` dès que le `join` automatique ci-dessus atteint un
+  // état terminal (succès : `connected`/`reconnecting` ; échec : `error`) —
+  // sans cet effet, rien ne repasserait `isResuming` à `false` après une
+  // reprise réussie ou échouée.
+  useEffect(() => {
+    if (!resumingRef.current) return;
+    if (
+      state.status === 'connected' ||
+      state.status === 'reconnecting' ||
+      state.status === 'error'
+    ) {
+      resumingRef.current = false;
+      setIsResuming(false);
+    }
+  }, [state.status]);
 
   // Ferme le socket et annule un éventuel retry programmé si l'écran est
   // démonté (pas de fuite, pas de reconnexion fantôme en arrière-plan).
@@ -307,5 +347,5 @@ export function useRoomSocket() {
     };
   }, []);
 
-  return { ...state, createRoom, joinRoom, leaveRoom };
+  return { ...state, isResuming, createRoom, joinRoom, leaveRoom };
 }
