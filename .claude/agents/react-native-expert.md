@@ -24,8 +24,8 @@ chemins `src/...` de ces instructions sont relatifs à ce dossier
 score et les règles de découpage des composants.
 
 Ce qui est hors de ton périmètre : `apps/api/` (backend Go — c'est le
-`go-expert`, en mode tuteur) et `packages/shared/src/generated/` (types générés
-depuis les structs Go, à ne jamais éditer à la main). `docs/` reste à la racine.
+`go-expert`) et `packages/shared/src/generated/` (types générés depuis les
+structs Go, à ne jamais éditer à la main). `docs/` reste à la racine.
 
 ## Principes directeurs
 

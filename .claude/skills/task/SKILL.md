@@ -128,13 +128,11 @@ Do the actual work, delegating by side:
   presentational-component rules, `src/theme.ts` tokens) and is expected to
   consult `vercel-react-native-skills` and `docs/design/charte-da.md` itself
   per its own instructions.
-- **`api`** — delegate to the `go-expert` subagent. **It is a tutor, not an
-  executant**: `apps/api/internal/hub/` and `internal/game/` (goroutines,
-  channels, `select`, shared state) are the user's to write by hand, as a
-  deliberate Go learning exercise. If the task lands in that zone, do not
-  write it and do not let a subagent write it — surface this at the step-4
-  checkpoint instead, and offer explanation/review/scaffolding. Everything
-  else in `apps/api` is delegable normally. See `apps/api/CLAUDE.md`.
+- **`api`** — delegate to the `go-expert` subagent for all of it, including
+  `apps/api/internal/hub/` and `internal/game/` concurrency (goroutines,
+  channels, `select`, shared state). This used to be a hand-write-only zone
+  for the user's Go learning exercise; that's retired, the user now learns Go
+  on a separate project and needs this one shipped. See `apps/api/CLAUDE.md`.
 - **`shared`** — never hand-edit `packages/shared/src/generated/`. Change the
   Go struct in `apps/api/internal/protocol/`, run `make generate`, and commit
   both together.
