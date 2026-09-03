@@ -4,7 +4,7 @@
 // hook useRoomSocket lui-même n'est pas testé ici : il n'y a pas de
 // @testing-library/react-native dans ce repo (cf. CLAUDE.md).
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { TypeJoin } from '@lbc/shared';
+import { TypeJoin, TypeRoomClosed } from '@lbc/shared';
 import { parseEnvelope, resolveWsUrl } from './ws';
 import { getOrCreatePlayerId } from './playerIdentity';
 import { getSavedPlayerName, savePlayerName } from './playerName';
@@ -45,6 +45,17 @@ describe('parseEnvelope', () => {
     expect(parseEnvelope(raw)).toEqual({
       type: TypeJoin,
       data: { roomCode: '1234', playerName: 'Alice' },
+    });
+  });
+
+  it('décode un message room_closed bien formé', () => {
+    const raw = JSON.stringify({
+      type: TypeRoomClosed,
+      data: { message: 'La salle a été fermée par son créateur.' },
+    });
+    expect(parseEnvelope(raw)).toEqual({
+      type: TypeRoomClosed,
+      data: { message: 'La salle a été fermée par son créateur.' },
     });
   });
 

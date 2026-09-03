@@ -10,10 +10,12 @@ import {
   isKnownMessageType,
   JoinPayload,
   Room,
+  RoomClosedPayload,
   RoomStatePayload,
   TypeCreate,
   TypeError as TypeErrorMessage,
   TypeJoin,
+  TypeRoomClosed,
   TypeRoomState,
 } from '@lbc/shared';
 import { getOrCreatePlayerId } from './playerIdentity';
@@ -198,6 +200,27 @@ export function useRoomSocket() {
           room: null,
           errorMessage: payload?.message || CONNECTION_FAILED_MESSAGE,
         });
+      } else if (envelope.type === TypeRoomClosed) {
+        const payload = envelope.data as RoomClosedPayload | null;
+        if (!payload?.message) return;
+        // Reçu par un joueur qui n'est pas à l'origine de la fermeture (le
+        // créateur a quitté la salle, le serveur l'a supprimée) : comme
+        // leaveRoom(), on annule tout retry programmé et on efface la
+        // session persistée — sans quoi le prochain montage de l'écran
+        // retenterait de rejoindre une salle qui n'existe plus — avant de
+        // fermer le socket. `socketRef.current` est invalidé avant `.close()`
+        // (même idiome que leaveRoom()/l'effet de démontage) pour qu'un
+        // `onclose` tardif de ce même socket ne programme aucun retry
+        // fantôme.
+        if (reconnectTimerRef.current != null) {
+          clearTimeout(reconnectTimerRef.current);
+          reconnectTimerRef.current = null;
+        }
+        sessionRef.current = null;
+        socketRef.current = null;
+        socket.close();
+        void clearRoomSession();
+        setState({ status: 'error', room: null, errorMessage: payload.message });
       }
     };
 
