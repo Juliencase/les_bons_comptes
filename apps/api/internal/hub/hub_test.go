@@ -6,12 +6,14 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/coder/websocket"
 
 	"github.com/sidequest-stash/les-bons-comptes/apps/api/internal/protocol"
+	"github.com/sidequest-stash/les-bons-comptes/apps/api/internal/roomstore"
 )
 
 const testRoomExpiryGrace = 150 * time.Millisecond
@@ -23,7 +25,13 @@ const testRoomExpiryGrace = 150 * time.Millisecond
 func newTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
 
-	h := New(slog.New(slog.DiscardHandler))
+	store, err := roomstore.Open(filepath.Join(t.TempDir(), "rooms.db"))
+	if err != nil {
+		t.Fatalf("roomstore.Open: %v", err)
+	}
+	t.Cleanup(func() { store.Close() })
+
+	h := New(slog.New(slog.DiscardHandler), store)
 	h.roomExpiryGrace = testRoomExpiryGrace
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -235,6 +243,39 @@ func TestLeaveDuCreateurFermeLaSalleEtPrevientLesAutres(t *testing.T) {
 	defer cancel()
 	if _, _, err := other.Read(ctx); err == nil {
 		t.Error("lecture apres room_closed : attendu une erreur (connexion fermee), rien recu")
+	}
+}
+
+func TestCreateurReconnecteResteReconnuCommeCreateur(t *testing.T) {
+	srv := newTestServer(t)
+	creator := dial(t, srv)
+	other := dial(t, srv)
+
+	send(t, creator, protocol.TypeCreate, protocol.CreatePayload{PlayerName: "Alice", PlayerID: "p-alice"})
+	created := roomState(t, receive(t, creator))
+
+	send(t, other, protocol.TypeJoin, protocol.JoinPayload{RoomCode: created.Room.Code, PlayerName: "Bob"})
+	receive(t, creator) // room_state a deux joueurs, pas verifie ici
+	receive(t, other)
+
+	// Coupure (pas un leave), puis reconnexion avec le meme PlayerID : le hub
+	// doit reconnaitre cette nouvelle connexion comme la createuse.
+	creator.CloseNow()
+	receive(t, other) // room_state a un seul joueur (Bob), pas verifie ici
+
+	reconnected := dial(t, srv)
+	send(t, reconnected, protocol.TypeJoin, protocol.JoinPayload{
+		RoomCode: created.Room.Code, PlayerName: "Alice", PlayerID: "p-alice",
+	})
+	receive(t, reconnected) // room_state a deux joueurs
+	receive(t, other)       // idem cote Bob
+
+	send(t, reconnected, protocol.TypeLeave, struct{}{})
+
+	env := receive(t, other)
+	if env.Type != protocol.TypeRoomClosed {
+		t.Fatalf("type = %q, attendu %q (la createuse reconnectee doit pouvoir fermer la salle)",
+			env.Type, protocol.TypeRoomClosed)
 	}
 }
 

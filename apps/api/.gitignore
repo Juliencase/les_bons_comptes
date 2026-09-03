@@ -1,0 +1,7 @@
+# Base SQLite locale (internal/roomstore) — jamais committée, jamais
+# partagée avec un autre service. En conteneur, DB_PATH pointe sur un volume
+# nommé dédié (voir docker-compose.yml) plutôt que sur ce dossier.
+/data/
+*.db
+*.db-shm
+*.db-wal

@@ -74,9 +74,12 @@ export interface Room {
  * de round-trip create puis join pour le créateur) ; la réponse est un
  * TypeRoomState classique, code inclus.
  * PlayerID est un identifiant stable généré et persisté côté client (pas par
- * connexion, contrairement à l'ID interne du hub) : il est destiné à terme à
- * permettre à une reconnexion d'être reconnue comme le même joueur plutôt
- * que traitée comme un nouvel arrivant. Le hub ne l'exploite pas encore.
+ * connexion, contrairement à l'ID interne du hub) : il permet à une
+ * reconnexion d'être reconnue comme le même joueur plutôt que traitée comme
+ * un nouvel arrivant. Le hub ne l'exploite aujourd'hui que pour reconnaître
+ * un créateur qui revient (roomCreatorPlayerIDs dans hub.go) — pas encore
+ * pour fusionner l'ancienne et la nouvelle entrée d'un joueur quelconque dans
+ * la liste de la salle.
  */
 export interface CreatePayload {
   playerName: string;
@@ -116,4 +119,26 @@ export interface ErrorPayload {
  */
 export interface RoomClosedPayload {
   message: string;
+}
+/**
+ * AdminRoomSnapshot — une salle telle que persistée par internal/roomstore,
+ * renvoyée par GET /admin/rooms. Pas un message de l'Envelope (c'est du REST
+ * classique, pas du WebSocket) mais un contrat qui traverse quand même le
+ * réseau, donc défini ici avec le reste — voir la doc du paquet.
+ */
+export interface AdminRoomSnapshot {
+  code: string;
+  creatorName: string;
+  players: Player[];
+  /**
+   * CreatedAt : secondes Unix (pas time.Time, pour rester un JSON trivial à
+   * lire côté TS sans dépendance de parsing de date).
+   */
+  createdAt: number /* int64 */;
+}
+/**
+ * AdminRoomsResponse — charge utile de GET /admin/rooms.
+ */
+export interface AdminRoomsResponse {
+  rooms: AdminRoomSnapshot[];
 }

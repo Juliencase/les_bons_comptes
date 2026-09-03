@@ -17,6 +17,7 @@ import (
 	"github.com/sidequest-stash/les-bons-comptes/apps/api/internal/config"
 	"github.com/sidequest-stash/les-bons-comptes/apps/api/internal/httpapi"
 	"github.com/sidequest-stash/les-bons-comptes/apps/api/internal/hub"
+	"github.com/sidequest-stash/les-bons-comptes/apps/api/internal/roomstore"
 )
 
 func main() {
@@ -28,12 +29,19 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	h := hub.New(logger)
+	store, err := roomstore.Open(cfg.DBPath)
+	if err != nil {
+		logger.Error("ouverture du store de salles echouee", "path", cfg.DBPath, "err", err)
+		os.Exit(1)
+	}
+	defer store.Close()
+
+	h := hub.New(logger, store)
 	go h.Run(ctx)
 
 	srv := &http.Server{
 		Addr:    cfg.Addr,
-		Handler: httpapi.NewRouter(h, cfg, logger),
+		Handler: httpapi.NewRouter(h, store, cfg, logger),
 		// Volontairement pas de ReadTimeout ni de WriteTimeout : ils
 		// couperaient les WebSockets, qui restent ouverts par nature.
 		// ReadHeaderTimeout protège quand même contre un client qui n'envoie

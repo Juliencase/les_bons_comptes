@@ -12,14 +12,26 @@ import (
 	"github.com/sidequest-stash/les-bons-comptes/apps/api/internal/config"
 	"github.com/sidequest-stash/les-bons-comptes/apps/api/internal/hub"
 	"github.com/sidequest-stash/les-bons-comptes/apps/api/internal/protocol"
+	"github.com/sidequest-stash/les-bons-comptes/apps/api/internal/roomstore"
 )
+
+// adminRoomLister est ce que le handler admin attend du store — juste de quoi
+// lister, jamais de quoi muter (seul Hub.Run persiste, voir internal/hub).
+// Interface plutôt que *roomstore.Store en dur : ça garde le handler testable
+// sans fichier SQLite réel si besoin plus tard.
+type adminRoomLister interface {
+	List() ([]protocol.AdminRoomSnapshot, error)
+}
+
+var _ adminRoomLister = (*roomstore.Store)(nil)
 
 // NewRouter câble les routes. Les motifs incluent la méthode (`GET /...`),
 // syntaxe supportée par net/http depuis Go 1.22 — pas besoin d'un routeur tiers.
-func NewRouter(h *hub.Hub, cfg config.Config, logger *slog.Logger) http.Handler {
+func NewRouter(h *hub.Hub, store adminRoomLister, cfg config.Config, logger *slog.Logger) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", handleHealth)
 	mux.HandleFunc("GET /ws", handleWS(h, cfg, logger))
+	mux.HandleFunc("GET /admin/rooms", handleAdminRooms(store, logger))
 	return mux
 }
 
@@ -35,6 +47,21 @@ func handleHealth(w http.ResponseWriter, _ *http.Request) {
 		Status:          "ok",
 		ProtocolVersion: protocol.Version,
 	})
+}
+
+// handleAdminRooms expose l'état persisté des salles (internal/roomstore),
+// pour une vue de debug qui ne dépend pas de ce qu'un client mobile croit
+// avoir en session. Sans authentification, à dessein : voir CLAUDE.md.
+func handleAdminRooms(store adminRoomLister, logger *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		rooms, err := store.List()
+		if err != nil {
+			logger.Error("liste des salles admin echouee", "err", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, protocol.AdminRoomsResponse{Rooms: rooms})
+	}
 }
 
 // handleWS fait l'upgrade puis confie la connexion au hub.

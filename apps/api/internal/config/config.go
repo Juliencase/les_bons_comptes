@@ -23,6 +23,13 @@ type Config struct {
 
 	// ShutdownTimeout borne l'arrêt gracieux : au-delà, on coupe.
 	ShutdownTimeout time.Duration
+
+	// DBPath est le chemin du fichier SQLite dédié à ce service (voir
+	// internal/roomstore) — jamais partagé avec un autre projet du Pi. Le
+	// défaut de développement local crée un dossier `data/` à côté du code ;
+	// en conteneur, DB_PATH pointe sur un volume nommé dédié (voir
+	// docker-compose.yml).
+	DBPath string
 }
 
 // Load construit la Config depuis l'environnement, avec des valeurs par défaut
@@ -32,6 +39,7 @@ func Load() Config {
 		Addr:            ":" + env("PORT", "8080"),
 		AllowedOrigins:  splitAndTrim(env("ALLOWED_ORIGINS", "localhost:8081")),
 		ShutdownTimeout: 10 * time.Second,
+		DBPath:          env("DB_PATH", "./data/rooms.db"),
 	}
 }
 

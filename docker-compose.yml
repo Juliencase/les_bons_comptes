@@ -2,6 +2,11 @@ networks:
   pi-net:
     external: true
 
+volumes:
+  # Base SQLite des salles multijoueur (internal/roomstore) — dédiée à ce
+  # service, jamais partagée avec un autre projet du Pi.
+  les-bons-comptes-api-data:
+
 services:
   les-bons-comptes:
     build:
@@ -28,12 +33,17 @@ services:
     restart: unless-stopped
     networks:
       - pi-net
+    volumes:
+      - les-bons-comptes-api-data:/data
     environment:
       PORT: "8080"
       # Origines autorisées à ouvrir un WebSocket. L'app mobile native n'envoie
       # pas d'en-tête Origin et n'a donc pas à y figurer : seule la version web
       # en a besoin.
       ALLOWED_ORIGINS: "les-bons-comptes.valodin.fr"
+      # Fichier SQLite des salles (internal/roomstore), sur le volume dédié
+      # ci-dessus.
+      DB_PATH: "/data/rooms.db"
     labels:
       - "traefik.enable=true"
       # Un seul niveau de sous-domaine : le certificat Universal SSL de

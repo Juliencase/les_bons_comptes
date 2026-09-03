@@ -78,6 +78,18 @@ const (
 	defaultRoomExpiryGrace = 5 * time.Minute
 )
 
+// Store persiste les salles pour que GET /admin/rooms reflète l'état réel du
+// serveur plutôt que la session que le client mobile garde de son côté (voir
+// internal/roomstore). Écrite uniquement depuis Run (voir la doc du paquet) :
+// pas de synchronisation supplémentaire nécessaire côté hub. Une erreur de
+// persistance est journalisée et n'interrompt jamais le traitement d'une
+// salle en direct — voir persistRoom.
+type Store interface {
+	Create(code, creatorName string, players []protocol.Player, createdAt time.Time) error
+	UpdatePlayers(code string, players []protocol.Player) error
+	Delete(code string) error
+}
+
 // nextClientID génère des identifiants uniques dans le process. Pas besoin
 // d'aléatoire cryptographique : ces IDs ne servent qu'à distinguer des
 // connexions entre elles côté serveur, jamais comme secret.
@@ -92,6 +104,11 @@ type Client struct {
 	ID   string
 	Name string
 	Room string // code de la room courante, "" si aucune.
+	// PlayerID est l'identifiant stable envoyé par le client (voir
+	// protocol.CreatePayload/JoinPayload) — contrairement à ID, il survit à
+	// une reconnexion (nouvelle *Client, même PlayerID). Sert uniquement à
+	// reconnaître un créateur qui revient, voir roomCreatorPlayerIDs.
+	PlayerID string
 
 	conn *websocket.Conn
 
@@ -124,33 +141,46 @@ type Hub struct {
 	// supprime l'entrée dès que ce client quitte la salle par un autre chemin
 	// (coupure, ou création/jointure d'une autre salle sans avoir quitté
 	// celle-ci), donc elle ne reste jamais un pointeur mort — mais une
-	// reconnexion crée un nouveau *Client : le créateur d'origine, une fois
-	// reconnecté, n'est plus reconnu comme tel pour la salle qu'il a
-	// retrouvée. Limite acceptée tant que le hub n'exploite pas PlayerID pour
-	// reconnaître un client qui revient.
+	// reconnexion crée un nouveau *Client : sans roomCreatorPlayerIDs
+	// ci-dessous, le créateur d'origine ne serait plus reconnu comme tel pour
+	// la salle qu'il a retrouvée.
+	// roomCreatorPlayerIDs : code de salle → PlayerID du créateur, fixé à la
+	// création et jamais retiré tant que la salle existe (contrairement à
+	// roomCreators, qui suit la connexion *Client courante et disparaît à
+	// chaque déconnexion). handleJoin s'en sert pour relier roomCreators au
+	// nouveau *Client d'un créateur qui revient avec le même PlayerID.
 	//
 	// Aucune n'est touchée hors de Run.
-	rooms        map[string]map[*Client]struct{}
-	roomTimers   map[string]*time.Timer
-	roomCreators map[string]*Client
+	rooms                map[string]map[*Client]struct{}
+	roomTimers           map[string]*time.Timer
+	roomCreators         map[string]*Client
+	roomCreatorPlayerIDs map[string]string
 
 	// roomExpiryGrace : voir defaultRoomExpiryGrace. Champ plutôt que
 	// constante utilisée en dur pour rester raccourcissable en test.
 	roomExpiryGrace time.Duration
+
+	// store : voir le type Store ci-dessus.
+	store Store
 }
 
-// New alloue un Hub prêt à être démarré par Run.
-func New(logger *slog.Logger) *Hub {
+// New alloue un Hub prêt à être démarré par Run. store ne doit jamais être
+// nil : passer un Store dont les méthodes ne font rien si la persistance
+// n'est pas souhaitée (les tests utilisent un vrai roomstore.Store sur
+// fichier temporaire, voir hub_test.go).
+func New(logger *slog.Logger, store Store) *Hub {
 	return &Hub{
-		logger:          logger,
-		register:        make(chan *Client),
-		unregister:      make(chan *Client),
-		inbound:         make(chan Inbound),
-		expireRoom:      make(chan string, 16),
-		rooms:           make(map[string]map[*Client]struct{}),
-		roomTimers:      make(map[string]*time.Timer),
-		roomCreators:    make(map[string]*Client),
-		roomExpiryGrace: defaultRoomExpiryGrace,
+		logger:               logger,
+		register:             make(chan *Client),
+		unregister:           make(chan *Client),
+		inbound:              make(chan Inbound),
+		expireRoom:           make(chan string, 16),
+		rooms:                make(map[string]map[*Client]struct{}),
+		roomTimers:           make(map[string]*time.Timer),
+		roomCreators:         make(map[string]*Client),
+		roomCreatorPlayerIDs: make(map[string]string),
+		roomExpiryGrace:      defaultRoomExpiryGrace,
+		store:                store,
 	}
 }
 
@@ -203,11 +233,14 @@ func (h *Hub) handleCreate(c *Client, data json.RawMessage) {
 
 	code := h.newRoomCode()
 	c.Name = payload.PlayerName
+	c.PlayerID = payload.PlayerID
 	c.Room = code
 	h.rooms[code] = map[*Client]struct{}{c: {}}
 	h.roomCreators[code] = c
+	h.roomCreatorPlayerIDs[code] = payload.PlayerID
 
 	h.logger.Info("room creee", "code", code, "clientID", c.ID)
+	h.persistRoomCreated(code, c.Name)
 	h.broadcastRoomState(code)
 }
 
@@ -243,11 +276,22 @@ func (h *Hub) handleJoin(c *Client, data json.RawMessage) {
 	h.removeFromRoom(c)
 
 	c.Name = payload.PlayerName
+	c.PlayerID = payload.PlayerID
 	c.Room = payload.RoomCode
 	clients[c] = struct{}{}
 	h.cancelRoomExpiry(payload.RoomCode)
 
+	// Le créateur d'origine revient avec un nouveau *Client (nouvelle
+	// connexion) mais le même PlayerID : on relie roomCreators à cette
+	// nouvelle connexion, sinon handleLeave ne le reconnaîtrait plus comme
+	// créateur (voir roomCreatorPlayerIDs). PlayerID vide : jamais de match,
+	// une chaîne vide ne doit jamais valoir "créateur".
+	if payload.PlayerID != "" && h.roomCreatorPlayerIDs[payload.RoomCode] == payload.PlayerID {
+		h.roomCreators[payload.RoomCode] = c
+	}
+
 	h.logger.Info("room rejointe", "code", payload.RoomCode, "clientID", c.ID)
+	h.persistRoomPlayers(payload.RoomCode)
 	h.broadcastRoomState(payload.RoomCode)
 }
 
@@ -313,7 +357,9 @@ func (h *Hub) closeRoomByCreator(code string, creator *Client) {
 
 	delete(h.rooms, code)
 	delete(h.roomCreators, code)
+	delete(h.roomCreatorPlayerIDs, code)
 	h.cancelRoomExpiry(code)
+	h.persistRoomDeleted(code)
 
 	h.logger.Info("room fermee par son createur", "code", code, "clientID", creator.ID)
 }
@@ -347,6 +393,7 @@ func (h *Hub) removeFromRoom(c *Client) {
 		return
 	}
 	delete(clients, c)
+	h.persistRoomPlayers(code)
 
 	if len(clients) == 0 {
 		h.scheduleRoomExpiry(code)
@@ -385,7 +432,49 @@ func (h *Hub) handleExpire(code string) {
 	}
 	delete(h.rooms, code)
 	delete(h.roomCreators, code)
+	delete(h.roomCreatorPlayerIDs, code)
+	h.persistRoomDeleted(code)
 	h.logger.Info("room expiree", "code", code)
+}
+
+// roomPlayers construit l'instantané des joueurs d'une salle, dans l'ordre où
+// ils apparaissent aux clients (broadcastRoomState) comme dans ce qui est
+// persisté (persistRoom*).
+func roomPlayers(clients map[*Client]struct{}) []protocol.Player {
+	players := make([]protocol.Player, 0, len(clients))
+	for c := range clients {
+		players = append(players, protocol.Player{ID: c.ID, Name: c.Name})
+	}
+	return players
+}
+
+// persistRoomCreated enregistre une salle tout juste créée. Comme pour les
+// deux fonctions suivantes, une erreur de persistance est journalisée et
+// jamais remontée : une salle en direct ne doit jamais dépendre du succès
+// d'une écriture disque (voir le type Store).
+func (h *Hub) persistRoomCreated(code, creatorName string) {
+	if err := h.store.Create(code, creatorName, roomPlayers(h.rooms[code]), time.Now()); err != nil {
+		h.logger.Error("persistance de la creation de room echouee", "code", code, "err", err)
+	}
+}
+
+// persistRoomPlayers reflète un changement de composition d'une salle
+// existante (join, depart d'un joueur). No-op si code n'est plus dans rooms.
+func (h *Hub) persistRoomPlayers(code string) {
+	clients, ok := h.rooms[code]
+	if !ok {
+		return
+	}
+	if err := h.store.UpdatePlayers(code, roomPlayers(clients)); err != nil {
+		h.logger.Error("persistance des joueurs de la room echouee", "code", code, "err", err)
+	}
+}
+
+// persistRoomDeleted efface une salle fermée ou expirée.
+func (h *Hub) persistRoomDeleted(code string) {
+	if err := h.store.Delete(code); err != nil {
+		h.logger.Error("suppression persistee de la room echouee", "code", code, "err", err)
+	}
 }
 
 // broadcastRoomState pousse l'etat courant de la room a tous ses clients.
@@ -395,10 +484,7 @@ func (h *Hub) broadcastRoomState(code string) {
 		return
 	}
 
-	room := protocol.Room{Code: code, Players: make([]protocol.Player, 0, len(clients))}
-	for c := range clients {
-		room.Players = append(room.Players, protocol.Player{ID: c.ID, Name: c.Name})
-	}
+	room := protocol.Room{Code: code, Players: roomPlayers(clients)}
 
 	data, err := json.Marshal(protocol.RoomStatePayload{Room: room})
 	if err != nil {

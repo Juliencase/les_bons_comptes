@@ -5,33 +5,26 @@ Guidance for the Go backend. The root `CLAUDE.md` covers the monorepo (layout,
 
 ## Read this before writing any Go here
 
-This backend exists for two reasons, and the second one changes how you are
-allowed to work in this directory: it is **how the user is learning Go**.
+This backend was originally scoped so that `internal/hub/` and
+`internal/game/` (goroutines, channels, `select`, shared state) stayed a
+hand-written learning exercise for the user, with everything else delegable.
+That's retired: the user is now learning Go on a separate project and needs
+this one to move fast, so **all of `apps/api` is delegable, `internal/hub/`
+and `internal/game/` included.** Don't hold back on those packages or wait
+for confirmation before writing concurrency code there.
 
-So there is an explicit frontier:
-
-| Zone | Who writes it |
-| --- | --- |
-| `internal/hub/`, `internal/game/` — anything with goroutines, channels, `select`, or shared state | **The user, by hand.** Never write it for them. |
-| Everything else — HTTP wiring, config, protocol structs, tests, Dockerfile, plumbing | Delegable. Write it, explain it briefly. |
-
-In the reserved zone your job is to **teach, not to deliver**: explain the
-mechanism, sketch the shape in prose or in a comment, name the trap they are
-about to hit, review what they wrote and say why it deadlocks — but leave the
-code to them. If they ask you outright to just write it, say what the
-trade-off is (they lose the exercise) once, and if they confirm, do it.
-
-The `go-expert` subagent (`.claude/agents/go-expert.md`) is configured in that
-tutor mode and is the right thing to delegate Go questions to.
+The `go-expert` subagent (`.claude/agents/go-expert.md`) is configured for
+this and is the right thing to delegate any Go work to.
 
 ## Layout
 
 ```
 cmd/server/         main — logger, signal handling, graceful shutdown
-internal/config/    env → Config (PORT, ALLOWED_ORIGINS)
+internal/config/    env → Config (PORT, ALLOWED_ORIGINS, DB_PATH)
 internal/protocol/  the wire contract — source of truth for packages/shared
-internal/httpapi/   routes: GET /healthz, GET /ws (upgrade)
+internal/httpapi/   routes: GET /healthz, GET /ws (upgrade), GET /admin/rooms
 internal/hub/       the concurrency core — deliberately unfinished
+internal/roomstore/ SQLite-backed room persistence, feeds GET /admin/rooms
 ```
 
 Nothing imports `internal/hub` except `internal/httpapi` (one call:
@@ -79,6 +72,19 @@ detector as passing from a local run that didn't actually execute it.
   `"GET /ws"`). No router dependency; don't add one for two routes.
 - **The Docker image is distroless `static` + `CGO_ENABLED=0`** — no shell, no
   libc, runs as `nonroot`. Anything needing cgo would break this.
+- **`GET /admin/rooms` has no authentication, on purpose.** It reads
+  `internal/roomstore` and exists so the mobile app's debug panel (and anyone
+  else) can see the real state of active rooms instead of trusting what a
+  client's local session claims. `les-bons-comptes.valodin.fr` is deliberately
+  public with no login (see the root `CLAUDE.md`), so this endpoint is too — a
+  room code is already the only thing needed to join a room, so this doesn't
+  lower the bar further. Revisit only if room contents ever include something
+  more sensitive than a code, a creator name, and player names.
+- **`internal/roomstore`'s SQLite file is wiped on every `Open`.** The hub
+  never reloads room state from it at startup (a restart always empties
+  `Hub.rooms` in memory) — without the wipe, a room still open at the moment
+  of a restart would linger in the file forever as a ghost row, since no
+  future hub event would ever revisit that room code to delete it.
 
 ## Conventions
 
