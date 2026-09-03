@@ -24,6 +24,7 @@ import BeloteScoreboardScreen from './src/screens/BeloteScoreboardScreen';
 import RoomScreen from './src/screens/RoomScreen';
 import { colors } from './src/theme';
 import ScreenBackground from './src/components/ScreenBackground';
+import AdminRoomsPanel from './src/components/AdminRoomsPanel';
 
 export default function App() {
   const screen = useStore((s) => s.screen);
@@ -63,6 +64,11 @@ export default function App() {
       ) : (
         <GamesScreen />
       )}
+      {hydrated &&
+        fontsLoaded &&
+        (screen === 'games' ||
+          screen === 'home' ||
+          screen === 'belote-home') && <AdminRoomsPanel />}
     </SafeAreaProvider>
   );
 }
