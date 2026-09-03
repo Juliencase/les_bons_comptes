@@ -72,18 +72,24 @@ export interface Room {
  * code de room et y ajoute directement l'émetteur comme premier joueur (pas
  * de round-trip create puis join pour le créateur) ; la réponse est un
  * TypeRoomState classique, code inclus.
+ * PlayerID est un identifiant stable généré et persisté côté client (pas par
+ * connexion, contrairement à l'ID interne du hub) : il est destiné à terme à
+ * permettre à une reconnexion d'être reconnue comme le même joueur plutôt
+ * que traitée comme un nouvel arrivant. Le hub ne l'exploite pas encore.
  */
 export interface CreatePayload {
   playerName: string;
+  playerId: string;
 }
 /**
  * JoinPayload — charge utile de TypeJoin. Utilisé par tout joueur qui
  * rejoint une room existante après sa création, créateur exclu (voir
- * CreatePayload).
+ * CreatePayload). PlayerID : voir CreatePayload.
  */
 export interface JoinPayload {
   roomCode: string;
   playerName: string;
+  playerId: string;
 }
 /**
  * RoomStatePayload — charge utile de TypeRoomState. Le serveur renvoie l'état

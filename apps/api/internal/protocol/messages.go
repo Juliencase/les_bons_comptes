@@ -60,16 +60,23 @@ type Room struct {
 // code de room et y ajoute directement l'émetteur comme premier joueur (pas
 // de round-trip create puis join pour le créateur) ; la réponse est un
 // TypeRoomState classique, code inclus.
+//
+// PlayerID est un identifiant stable généré et persisté côté client (pas par
+// connexion, contrairement à l'ID interne du hub) : il est destiné à terme à
+// permettre à une reconnexion d'être reconnue comme le même joueur plutôt
+// que traitée comme un nouvel arrivant. Le hub ne l'exploite pas encore.
 type CreatePayload struct {
 	PlayerName string `json:"playerName"`
+	PlayerID   string `json:"playerId"`
 }
 
 // JoinPayload — charge utile de TypeJoin. Utilisé par tout joueur qui
 // rejoint une room existante après sa création, créateur exclu (voir
-// CreatePayload).
+// CreatePayload). PlayerID : voir CreatePayload.
 type JoinPayload struct {
 	RoomCode   string `json:"roomCode"`
 	PlayerName string `json:"playerName"`
+	PlayerID   string `json:"playerId"`
 }
 
 // RoomStatePayload — charge utile de TypeRoomState. Le serveur renvoie l'état
