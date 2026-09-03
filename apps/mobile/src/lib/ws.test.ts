@@ -1,15 +1,14 @@
 // Tests des fonctions pures du client WS multijoueur (résolution d'URL,
 // parsing d'enveloppe), et des petits modules de persistance/retry qui
-// l'accompagnent (playerIdentity, playerName, roomSession, reconnect). Le
-// hook useRoomSocket lui-même n'est pas testé ici : il n'y a pas de
+// l'accompagnent (playerIdentity, reconnect). La session de salle et le nom
+// mémorisé vivent désormais dans le store (voir store.test.ts) ; le hook
+// useRoomSocket lui-même n'est pas testé ici : il n'y a pas de
 // @testing-library/react-native dans ce repo (cf. CLAUDE.md).
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TypeJoin, TypeRoomClosed } from '@lbc/shared';
-import { parseEnvelope, resolveWsUrl } from './ws';
+import { parseEnvelope, resolveApiBaseUrl, resolveWsUrl } from './ws';
 import { getOrCreatePlayerId } from './playerIdentity';
-import { getSavedPlayerName, savePlayerName } from './playerName';
 import { computeBackoffDelayMs } from './reconnect';
-import { clearRoomSession, loadRoomSession, saveRoomSession } from './roomSession';
 
 // AsyncStorage n'existe pas hors app : le mock officiel du package suffit,
 // même pattern que store.test.ts.
@@ -33,6 +32,24 @@ describe('resolveWsUrl', () => {
   it('utilise EXPO_PUBLIC_WS_URL quand elle est définie', () => {
     process.env.EXPO_PUBLIC_WS_URL = 'wss://lbc-api.valodin.fr/ws';
     expect(resolveWsUrl()).toBe('wss://lbc-api.valodin.fr/ws');
+  });
+});
+
+describe('resolveApiBaseUrl', () => {
+  const original = process.env.EXPO_PUBLIC_WS_URL;
+
+  afterEach(() => {
+    process.env.EXPO_PUBLIC_WS_URL = original;
+  });
+
+  it('dérive http:// depuis ws:// et retire le /ws final (défaut local)', () => {
+    delete process.env.EXPO_PUBLIC_WS_URL;
+    expect(resolveApiBaseUrl()).toBe('http://localhost:8080');
+  });
+
+  it('dérive https:// depuis wss://', () => {
+    process.env.EXPO_PUBLIC_WS_URL = 'wss://lbc-api.valodin.fr/ws';
+    expect(resolveApiBaseUrl()).toBe('https://lbc-api.valodin.fr');
   });
 });
 
@@ -96,87 +113,6 @@ describe('getOrCreatePlayerId', () => {
     await AsyncStorage.clear();
     const second = await getOrCreatePlayerId();
     expect(second).not.toBe(first);
-  });
-});
-
-describe('playerName', () => {
-  beforeEach(async () => {
-    await AsyncStorage.clear();
-  });
-
-  it("ne renvoie rien tant qu'aucun nom n'a été mémorisé", async () => {
-    expect(await getSavedPlayerName()).toBeNull();
-  });
-
-  it('relit exactement le nom sauvegardé', async () => {
-    await savePlayerName('Alice');
-    expect(await getSavedPlayerName()).toBe('Alice');
-  });
-
-  it('remplace le nom mémorisé par le plus récent', async () => {
-    await savePlayerName('Alice');
-    await savePlayerName('Bob');
-    expect(await getSavedPlayerName()).toBe('Bob');
-  });
-});
-
-describe('roomSession', () => {
-  beforeEach(async () => {
-    await AsyncStorage.clear();
-  });
-
-  it("ne renvoie rien tant qu'aucune session n'a été sauvegardée", async () => {
-    expect(await loadRoomSession()).toBeNull();
-  });
-
-  it('relit exactement la session sauvegardée', async () => {
-    await saveRoomSession({ roomCode: '1234', playerName: 'Alice', isCreator: false });
-    expect(await loadRoomSession()).toEqual({
-      roomCode: '1234',
-      playerName: 'Alice',
-      isCreator: false,
-    });
-  });
-
-  it("conserve isCreator: true (session d'un créateur de salle)", async () => {
-    await saveRoomSession({ roomCode: '1234', playerName: 'Alice', isCreator: true });
-    expect(await loadRoomSession()).toEqual({
-      roomCode: '1234',
-      playerName: 'Alice',
-      isCreator: true,
-    });
-  });
-
-  it('efface la session persistée', async () => {
-    await saveRoomSession({ roomCode: '1234', playerName: 'Alice', isCreator: false });
-    await clearRoomSession();
-    expect(await loadRoomSession()).toBeNull();
-  });
-
-  it('ignore un contenu JSON invalide sans lever', async () => {
-    const spy = jest
-      .spyOn(AsyncStorage, 'getItem')
-      .mockResolvedValueOnce('{ceci-nest-pas-du-json');
-    expect(await loadRoomSession()).toBeNull();
-    spy.mockRestore();
-  });
-
-  it("ignore une valeur qui n'a pas la forme d'une session", async () => {
-    const spy = jest
-      .spyOn(AsyncStorage, 'getItem')
-      .mockResolvedValueOnce(JSON.stringify({ foo: 'bar' }));
-    expect(await loadRoomSession()).toBeNull();
-    spy.mockRestore();
-  });
-
-  it('ignore une session sans isCreator (ancien format persisté)', async () => {
-    const spy = jest
-      .spyOn(AsyncStorage, 'getItem')
-      .mockResolvedValueOnce(
-        JSON.stringify({ roomCode: '1234', playerName: 'Alice' }),
-      );
-    expect(await loadRoomSession()).toBeNull();
-    spy.mockRestore();
   });
 });
 

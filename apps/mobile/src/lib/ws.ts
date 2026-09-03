@@ -1,7 +1,7 @@
 // Client WebSocket minimal pour parler au serveur multijoueur (apps/api).
 // Pas de dépendance externe : le WebSocket natif de React Native /
 // react-native-web suffit pour la poignée de messages JSON échangés ici.
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import {
   CreatePayload,
   Envelope,
@@ -9,7 +9,6 @@ import {
   isEnvelope,
   isKnownMessageType,
   JoinPayload,
-  Room,
   RoomClosedPayload,
   RoomStatePayload,
   TypeCreate,
@@ -21,7 +20,8 @@ import {
 } from '@lbc/shared';
 import { getOrCreatePlayerId } from './playerIdentity';
 import { computeBackoffDelayMs } from './reconnect';
-import { clearRoomSession, loadRoomSession, saveRoomSession } from './roomSession';
+import { useStore } from './store';
+import { RoomConnectionState } from './types';
 
 const DEFAULT_WS_URL = 'ws://localhost:8080/ws';
 
@@ -32,6 +32,22 @@ const DEFAULT_WS_URL = 'ws://localhost:8080/ws';
  */
 export function resolveWsUrl(): string {
   return process.env.EXPO_PUBLIC_WS_URL ?? DEFAULT_WS_URL;
+}
+
+/**
+ * Dérive l'URL HTTP de base du serveur à partir de `resolveWsUrl()` — même
+ * hôte, mais `ws(s)://` → `http(s)://` et sans le `/ws` final. Pas de
+ * variable d'environnement dédiée : une seule valeur à faire varier au build
+ * pour les deux usages (WebSocket et REST, ex. `GET /admin/rooms`).
+ */
+export function resolveApiBaseUrl(): string {
+  const wsUrl = resolveWsUrl();
+  const httpUrl = wsUrl.startsWith('wss://')
+    ? `https://${wsUrl.slice('wss://'.length)}`
+    : wsUrl.startsWith('ws://')
+      ? `http://${wsUrl.slice('ws://'.length)}`
+      : wsUrl;
+  return httpUrl.replace(/\/ws$/, '');
 }
 
 /**
@@ -50,29 +66,6 @@ export function parseEnvelope(raw: unknown): Envelope | null {
   return isEnvelope(value) ? value : null;
 }
 
-export type RoomConnectionStatus =
-  | 'idle'
-  | 'connecting'
-  | 'connected'
-  | 'reconnecting'
-  | 'error';
-
-type RoomSocketState = {
-  status: RoomConnectionStatus;
-  room: Room | null;
-  errorMessage: string | null;
-  // `true` quand la session courante vient de createRoom(), `false` sinon
-  // (joinRoom(), ou hors de toute salle) — voir PendingSession.
-  isCreator: boolean;
-};
-
-const IDLE_STATE: RoomSocketState = {
-  status: 'idle',
-  room: null,
-  errorMessage: null,
-  isCreator: false,
-};
-
 // Message affiché à l'utilisateur : jamais le détail technique (code réseau,
 // raison de fermeture...), qui n'aiderait personne autour d'une table de jeu.
 const CONNECTION_FAILED_MESSAGE =
@@ -84,9 +77,11 @@ const CONNECTION_FAILED_MESSAGE =
 // plus bas). `roomCode` vaut '' tant que le serveur ne l'a pas confirmé (juste
 // après un `create`, avant la toute première `room_state`). `isCreator`
 // distingue une session née d'un createRoom() d'une session née d'un
-// joinRoom() — purement informatif côté client (le hub ne traite plus une
-// reconnexion comme celle du créateur, voir hub.go), utilisé uniquement pour
-// adapter la copie de RoomScreen.
+// joinRoom() — utilisé pour adapter la copie de RoomScreen ; le hub, lui,
+// retrouve indépendamment le créateur d'origine via `playerId` (voir
+// roomCreatorPlayerIDs dans hub.go), donc cette valeur n'a pas besoin de
+// rester correcte pour que "Supprimer la salle" fonctionne après une
+// reconnexion, seulement pour l'affichage.
 type PendingSession = {
   roomCode: string;
   playerName: string;
@@ -103,36 +98,51 @@ function buildJoinEnvelope(session: PendingSession): Envelope {
   return { type: TypeJoin, data: payload };
 }
 
+/** Écrit le slice de connexion dans le store (remplacement complet, jamais un patch). */
+function setRoomConnection(next: RoomConnectionState): void {
+  useStore.getState().setRoomConnection(next);
+}
+
 /**
- * Ouvre une connexion au serveur multijoueur et expose son état au composant
- * appelant (`idle` → `connecting` → `connected`/`error`, avec un
- * `reconnecting` intercalé lors d'une coupure après connexion). Un seul
- * socket vit à la fois : rappeler `createRoom`/`joinRoom` referme
- * silencieusement une tentative précédente.
+ * Ouvre une connexion au serveur multijoueur ; son état est lu par le
+ * composant appelant depuis le store (`useStore`, slice `roomConnection`) :
+ * `idle` → `connecting` → `connected`/`error`, avec un `reconnecting`
+ * intercalé lors d'une coupure après connexion. Un seul socket vit à la
+ * fois : rappeler `createRoom`/`joinRoom` referme silencieusement une
+ * tentative précédente. Un seul appelant doit posséder une connexion à la
+ * fois (aujourd'hui `RoomScreen`) — appeler ce hook une seconde fois
+ * ouvrirait une deuxième WebSocket.
  *
  * Une fermeture inattendue (ni `leaveRoom()`, ni un nouvel appel
  * `createRoom`/`joinRoom`) survenant après un `connected`, ou pendant une
  * reconnexion déjà en cours, programme un nouvel essai avec un backoff
  * exponentiel plafonné (`computeBackoffDelayMs`) — indéfiniment tant que le
- * composant reste monté. Comme le hub Go n'exploite pas encore `playerId`
- * (voir `packages/shared/src/generated/protocol.ts`), une reconnexion
- * recrée côté serveur un nouveau joueur dans la salle : compromis accepté
- * pour cette phase, pas de tentative de le masquer côté client.
+ * composant reste monté. Le hub Go ne fusionne pas encore l'ancienne et la
+ * nouvelle entrée d'un joueur quelconque dans la liste de la salle (voir
+ * `packages/shared/src/generated/protocol.ts`, PlayerID) : une reconnexion
+ * recrée côté serveur un nouveau joueur dans la salle affichée aux autres
+ * — compromis accepté pour cette phase, pas de tentative de le masquer côté
+ * client. Seule l'identité du créateur, elle, est déjà reconnue via
+ * `playerId` (voir roomCreatorPlayerIDs dans hub.go).
  *
- * Expose aussi `isResuming` : `true` le temps que la reprise automatique
- * d'une session persistée (voir plus bas) se conclue, pour que l'appelant
- * masque le formulaire créer/rejoindre pendant ce délai au lieu de
- * l'afficher en flash avant bascule vers la salle retrouvée.
+ * Expose aussi `isResuming` (store) : `true` le temps que la reprise
+ * automatique d'une session persistée (`roomSession`, voir plus bas) se
+ * conclue, pour que l'appelant masque le formulaire créer/rejoindre pendant
+ * ce délai au lieu de l'afficher en flash avant bascule vers la salle
+ * retrouvée.
  *
  * Et `isCreator` : `true` quand la session courante vient d'un `createRoom()`
  * (y compris retrouvée par la reprise automatique), `false` sinon — hors de
- * toute salle ou après un `joinRoom()`. Purement déclaratif côté client, à
- * l'usage de l'affichage (ex. RoomScreen distingue "Supprimer la salle" de
- * "Quitter la salle") : voir la limite documentée sur `roomCreators` dans
- * hub.go, une reconnexion n'étant plus reconnue comme créatrice côté serveur.
+ * toute salle ou après un `joinRoom()`. À l'usage de l'affichage (ex.
+ * RoomScreen distingue "Supprimer la salle" de "Quitter la salle") ; le
+ * serveur, lui, retrouve indépendamment la créatrice d'origine via
+ * `playerId` (roomCreatorPlayerIDs dans hub.go), donc "Supprimer la salle"
+ * fonctionne réellement même après une reconnexion.
  */
 export function useRoomSocket() {
-  const [state, setState] = useState<RoomSocketState>(IDLE_STATE);
+  const { status, room, errorMessage, isCreator, isResuming } = useStore(
+    (s) => s.roomConnection,
+  );
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptRef = useRef(0);
@@ -143,18 +153,6 @@ export function useRoomSocket() {
   // asynchrone du playerId d'un appel devenu obsolète (createRoom/joinRoom
   // rappelé, ou leaveRoom, avant que `getOrCreatePlayerId` ait répondu).
   const requestIdRef = useRef(0);
-  // `true` tant qu'un `join` automatique (déclenché par la session persistée
-  // au montage, voir plus bas) est en cours : le composant appelant s'en sert
-  // pour masquer le formulaire créer/rejoindre le temps de savoir si la
-  // reprise réussit, plutôt que de l'afficher en flash avant bascule vers la
-  // salle retrouvée. N'a aucun rapport avec `connecting`/`reconnecting`, qui
-  // couvrent aussi les tentatives manuelles.
-  const [isResuming, setIsResuming] = useState(true);
-  // Miroir de `isResuming` lisible de façon synchrone dans l'effet ci-dessous
-  // (qui réagit à `status`) : distingue une reprise automatique en cours
-  // d'une simple connexion manuelle, pour ne couper `isResuming` que quand
-  // c'est bien elle qui atteint un état terminal.
-  const resumingRef = useRef(false);
 
   const clearReconnectTimer = useCallback(() => {
     if (reconnectTimerRef.current != null) {
@@ -170,10 +168,10 @@ export function useRoomSocket() {
 
   // Ouvre un socket et branche ses gestionnaires ; `buildOutbound` construit
   // le message envoyé une fois la connexion établie. Dépendances vides à
-  // dessein : tout ce dont la fonction a besoin (refs, `setState`, imports de
-  // module) est stable, ce qui permet à `onclose` de se reprogrammer
-  // elle-même (via `connect`, capturé par closure) sans dépendance circulaire
-  // avec un `scheduleReconnect` séparé.
+  // dessein : tout ce dont la fonction a besoin (refs, le store — stable via
+  // `useStore.getState()`, imports de module) est stable, ce qui permet à
+  // `onclose` de se reprogrammer elle-même (via `connect`, capturé par
+  // closure) sans dépendance circulaire avec un `scheduleReconnect` séparé.
   const connect = useCallback((buildOutbound: () => Envelope) => {
     const socket = new WebSocket(resolveWsUrl());
     socketRef.current = socket;
@@ -204,25 +202,27 @@ export function useRoomSocket() {
         const session = sessionRef.current;
         if (session) {
           sessionRef.current = { ...session, roomCode: payload.room.code };
-          void saveRoomSession({
+          useStore.getState().setRoomSession({
             roomCode: payload.room.code,
             playerName: session.playerName,
             isCreator: session.isCreator,
           });
         }
-        setState({
+        setRoomConnection({
           status: 'connected',
           room: payload.room,
           errorMessage: null,
           isCreator: session?.isCreator ?? false,
+          isResuming: useStore.getState().roomConnection.isResuming,
         });
       } else if (envelope.type === TypeErrorMessage) {
         const payload = envelope.data as ErrorPayload | null;
-        setState({
+        setRoomConnection({
           status: 'error',
           room: null,
           errorMessage: payload?.message || CONNECTION_FAILED_MESSAGE,
           isCreator: false,
+          isResuming: useStore.getState().roomConnection.isResuming,
         });
       } else if (envelope.type === TypeRoomClosed) {
         const payload = envelope.data as RoomClosedPayload | null;
@@ -243,12 +243,13 @@ export function useRoomSocket() {
         sessionRef.current = null;
         socketRef.current = null;
         socket.close();
-        void clearRoomSession();
-        setState({
+        useStore.getState().setRoomSession(null);
+        setRoomConnection({
           status: 'error',
           room: null,
           errorMessage: payload.message,
           isCreator: false,
+          isResuming: useStore.getState().roomConnection.isResuming,
         });
       }
     };
@@ -258,36 +259,38 @@ export function useRoomSocket() {
       socketRef.current = null;
 
       const session = sessionRef.current;
-      setState((prev) => {
-        // Fermeture avant toute connexion établie (ou après une salle déjà
-        // quittée) : l'échec attendu, pas de retry. On ne retente que si on
-        // connaît la salle à rejoindre (session non nulle) et qu'on était
-        // déjà connecté, ou déjà en train de retenter.
-        const shouldRetry =
-          session != null &&
-          (prev.status === 'connected' || prev.status === 'reconnecting');
-        if (!shouldRetry) {
-          return {
-            status: 'error',
-            room: null,
-            errorMessage: CONNECTION_FAILED_MESSAGE,
-            isCreator: false,
-          };
-        }
+      const prev = useStore.getState().roomConnection;
+      // Fermeture avant toute connexion établie (ou après une salle déjà
+      // quittée) : l'échec attendu, pas de retry. On ne retente que si on
+      // connaît la salle à rejoindre (session non nulle) et qu'on était
+      // déjà connecté, ou déjà en train de retenter.
+      const shouldRetry =
+        session != null &&
+        (prev.status === 'connected' || prev.status === 'reconnecting');
+      if (!shouldRetry) {
+        setRoomConnection({
+          status: 'error',
+          room: null,
+          errorMessage: CONNECTION_FAILED_MESSAGE,
+          isCreator: false,
+          isResuming: useStore.getState().roomConnection.isResuming,
+        });
+        return;
+      }
 
-        const attempt = reconnectAttemptRef.current;
-        reconnectAttemptRef.current += 1;
-        reconnectTimerRef.current = setTimeout(() => {
-          reconnectTimerRef.current = null;
-          connect(() => buildJoinEnvelope(session));
-        }, computeBackoffDelayMs(attempt));
+      const attempt = reconnectAttemptRef.current;
+      reconnectAttemptRef.current += 1;
+      reconnectTimerRef.current = setTimeout(() => {
+        reconnectTimerRef.current = null;
+        connect(() => buildJoinEnvelope(session));
+      }, computeBackoffDelayMs(attempt));
 
-        return {
-          status: 'reconnecting',
-          room: prev.room,
-          errorMessage: null,
-          isCreator: session.isCreator,
-        };
+      setRoomConnection({
+        status: 'reconnecting',
+        room: prev.room,
+        errorMessage: null,
+        isCreator: session.isCreator,
+        isResuming: useStore.getState().roomConnection.isResuming,
       });
     };
   }, []);
@@ -297,7 +300,13 @@ export function useRoomSocket() {
       clearReconnectTimer();
       closeSocket();
       reconnectAttemptRef.current = 0;
-      setState({ status: 'connecting', room: null, errorMessage: null, isCreator: true });
+      setRoomConnection({
+        status: 'connecting',
+        room: null,
+        errorMessage: null,
+        isCreator: true,
+        isResuming: useStore.getState().roomConnection.isResuming,
+      });
 
       const requestId = ++requestIdRef.current;
       void getOrCreatePlayerId().then((playerId) => {
@@ -332,7 +341,13 @@ export function useRoomSocket() {
       clearReconnectTimer();
       closeSocket();
       reconnectAttemptRef.current = 0;
-      setState({ status: 'connecting', room: null, errorMessage: null, isCreator });
+      setRoomConnection({
+        status: 'connecting',
+        room: null,
+        errorMessage: null,
+        isCreator,
+        isResuming: useStore.getState().roomConnection.isResuming,
+      });
 
       const requestId = ++requestIdRef.current;
       void getOrCreatePlayerId().then((playerId) => {
@@ -368,51 +383,75 @@ export function useRoomSocket() {
       socketRef.current.send(JSON.stringify({ type: TypeLeave, data: {} }));
     }
     closeSocket();
-    void clearRoomSession();
-    setState(IDLE_STATE);
+    useStore.getState().setRoomSession(null);
+    setRoomConnection({
+      status: 'idle',
+      room: null,
+      errorMessage: null,
+      isCreator: false,
+      isResuming: false,
+    });
   }, [clearReconnectTimer, closeSocket]);
 
   // Reprise automatique : si une session de salle a survécu au montage
   // précédent (app relancée pendant une partie), on retente un `join`
-  // immédiat plutôt que d'afficher le formulaire vide. `isResuming` reste
-  // `true` le temps de cet appel — voir l'effet suivant, qui l'éteint une
-  // fois `status` arrivé à un état terminal.
+  // immédiat plutôt que d'afficher le formulaire vide. Lecture **synchrone**
+  // du store (`useStore.getState()`) plutôt qu'une lecture AsyncStorage
+  // dédiée : le store est déjà hydraté avant que RoomScreen ne monte (voir
+  // App.tsx, qui bloque le rendu tant que `hydrated` n'est pas vrai), donc
+  // `roomSession` est immédiatement fiable — plus besoin d'attendre une
+  // promesse ni de garde anti-course (l'ancienne version guettait un appel
+  // manuel survenu pendant cette attente ; ici l'effet se résout dans le même
+  // tick que le montage, avant qu'aucune action manuelle ne soit possible).
+  // `isResuming` doit être forcé à `true` ici *avant* d'appeler `joinRoom` :
+  // le store est global et survit à un démontage/remontage de l'écran, donc
+  // sa valeur courante peut très bien déjà être `false` (laissée par un
+  // montage précédent) — sans ce forçage, l'appel `setRoomConnection` fait
+  // par `joinRoom` la lirait telle quelle et le formulaire flasherait avant
+  // la bascule vers la salle retrouvée. `isResuming` reste `true` le temps de
+  // l'appel réseau lui-même — voir l'effet suivant, qui l'éteint une fois
+  // `status` arrivé à un état terminal.
   useEffect(() => {
-    let cancelled = false;
-    const requestId = requestIdRef.current;
-    void loadRoomSession().then((session) => {
-      if (cancelled) return;
-      // Un appel manuel (createRoom/joinRoom/leaveRoom) est survenu pendant
-      // la lecture d'AsyncStorage : ne pas écraser l'action de l'utilisateur
-      // avec la session persistée, potentiellement obsolète, ni bloquer
-      // l'écran sur `isResuming` puisqu'aucune reprise auto n'aura lieu.
-      if (!session || requestIdRef.current !== requestId) {
-        setIsResuming(false);
-        return;
-      }
-      resumingRef.current = true;
+    const session = useStore.getState().roomSession;
+    if (session) {
+      setRoomConnection({ ...useStore.getState().roomConnection, isResuming: true });
       joinRoom(session.roomCode, session.playerName, session.isCreator);
-    });
-    return () => {
-      cancelled = true;
-    };
+    } else {
+      setRoomConnection({
+        status: 'idle',
+        room: null,
+        errorMessage: null,
+        isCreator: false,
+        isResuming: false,
+      });
+    }
   }, [joinRoom]);
 
   // Éteint `isResuming` dès que le `join` automatique ci-dessus atteint un
   // état terminal (succès : `connected`/`reconnecting` ; échec : `error`) —
   // sans cet effet, rien ne repasserait `isResuming` à `false` après une
-  // reprise réussie ou échouée.
+  // reprise réussie ou échouée. `isResuming` (destructuré du store en tête de
+  // hook) est fiable ici, contrairement à l'intérieur des callbacks
+  // ci-dessus : cet effet re-tourne à chaque changement du store (deps),
+  // alors que `connect`/`createRoom`/`joinRoom` sont mémoïsés une fois pour
+  // toutes (deps vides ou stables) et figeraient une valeur lue par closure —
+  // d'où leur lecture systématique via `useStore.getState()` à la place.
   useEffect(() => {
-    if (!resumingRef.current) return;
+    if (!isResuming) return;
     if (
-      state.status === 'connected' ||
-      state.status === 'reconnecting' ||
-      state.status === 'error'
+      status === 'connected' ||
+      status === 'reconnecting' ||
+      status === 'error'
     ) {
-      resumingRef.current = false;
-      setIsResuming(false);
+      setRoomConnection({
+        status,
+        room,
+        errorMessage,
+        isCreator,
+        isResuming: false,
+      });
     }
-  }, [state.status]);
+  }, [status, room, errorMessage, isCreator, isResuming]);
 
   // Ferme le socket et annule un éventuel retry programmé si l'écran est
   // démonté (pas de fuite, pas de reconnexion fantôme en arrière-plan).
@@ -420,14 +459,38 @@ export function useRoomSocket() {
   // socket arrive de façon asynchrone, potentiellement après ce cleanup, et
   // son `isCurrent()` doit déjà voir `false` pour ne programmer aucun retry
   // (même idiome que `connect`/`leaveRoom`).
+  //
+  // `roomConnection` (store) est remis à son état neutre au passage : sans
+  // ça, un autre composant qui lirait ce slice pendant que RoomScreen est
+  // démonté (ex. un futur badge « salle en cours » sur GamesScreen) verrait
+  // un `status: 'connected'` figé alors que le socket réel vient d'être
+  // fermé — le slice doit refléter qu'aucune connexion n'est active, pas
+  // juste que personne ne regarde plus.
   useEffect(() => {
     return () => {
-      if (reconnectTimerRef.current != null) clearTimeout(reconnectTimerRef.current);
+      if (reconnectTimerRef.current != null)
+        clearTimeout(reconnectTimerRef.current);
       const socket = socketRef.current;
       socketRef.current = null;
       socket?.close();
+      setRoomConnection({
+        status: 'idle',
+        room: null,
+        errorMessage: null,
+        isCreator: false,
+        isResuming: false,
+      });
     };
   }, []);
 
-  return { ...state, isResuming, createRoom, joinRoom, leaveRoom };
+  return {
+    status,
+    room,
+    errorMessage,
+    isResuming,
+    isCreator,
+    createRoom,
+    joinRoom,
+    leaveRoom,
+  };
 }

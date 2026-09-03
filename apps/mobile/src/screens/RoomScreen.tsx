@@ -5,7 +5,7 @@
 // `isResuming` (useRoomSocket) est vrai — le temps de savoir si une session
 // persistée doit être retrouvée — ni le formulaire ni la salle ne s'affichent,
 // pour éviter le flash du formulaire vide avant bascule sur la salle en cours.
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -26,7 +26,6 @@ import ScreenHeader from '../components/ScreenHeader';
 import SegmentedToggle, {
   SegmentedOption,
 } from '../components/SegmentedToggle';
-import { getSavedPlayerName, savePlayerName } from '../lib/playerName';
 import { useRoomSocket } from '../lib/ws';
 import { useStore } from '../lib/store';
 import { alpha, colors, fonts, opacity } from '../theme';
@@ -42,8 +41,14 @@ const ROOM_CODE_LENGTH = 4;
 
 export default function RoomScreen() {
   const setScreen = useStore((s) => s.setScreen);
+  const setSavedPlayerName = useStore((s) => s.setSavedPlayerName);
   const [mode, setMode] = useState<RoomMode>('join');
-  const [playerName, setPlayerName] = useState('');
+  // Préremplit le nom avec la dernière valeur mémorisée (voir submit, qui la
+  // met à jour) — lecture synchrone, le store est déjà hydraté avant que cet
+  // écran ne monte (voir App.tsx).
+  const [playerName, setPlayerName] = useState(
+    () => useStore.getState().savedPlayerName ?? '',
+  );
   const [roomCode, setRoomCode] = useState('');
   const codeInputRef = useRef<TextInput>(null);
   const {
@@ -56,19 +61,6 @@ export default function RoomScreen() {
     joinRoom,
     leaveRoom,
   } = useRoomSocket();
-
-  // Préremplit le nom avec la dernière valeur mémorisée (voir submit, qui la
-  // met à jour) — seulement si l'utilisateur n'a rien tapé entre-temps.
-  useEffect(() => {
-    let cancelled = false;
-    void getSavedPlayerName().then((saved) => {
-      if (cancelled || !saved) return;
-      setPlayerName((current) => (current === '' ? saved : current));
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const isJoinMode = mode === 'join';
   const trimmedName = playerName.trim();
@@ -84,7 +76,7 @@ export default function RoomScreen() {
 
   const submit = () => {
     if (!canSubmit) return;
-    void savePlayerName(trimmedName);
+    setSavedPlayerName(trimmedName);
     if (isJoinMode) {
       joinRoom(roomCode, trimmedName);
     } else {
@@ -123,9 +115,7 @@ export default function RoomScreen() {
         >
           <View style={styles.container}>
             <ScreenHeader
-              left={
-                !isInRoom && <BackButton label="Jeux" onPress={goBack} />
-              }
+              left={!isInRoom && <BackButton label="Jeux" onPress={goBack} />}
             />
             <Text style={styles.title}>Multijoueur</Text>
 
