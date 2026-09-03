@@ -31,8 +31,9 @@ const (
 	TypeLeave  MessageType = "leave"
 
 	// Serveur → client.
-	TypeRoomState MessageType = "room_state"
-	TypeError     MessageType = "error"
+	TypeRoomState  MessageType = "room_state"
+	TypeError      MessageType = "error"
+	TypeRoomClosed MessageType = "room_closed"
 )
 
 // Envelope est le cadre commun à tous les messages : un discriminant et une
@@ -90,5 +91,13 @@ type RoomStatePayload struct {
 // appelant, `Message` à l'affichage.
 type ErrorPayload struct {
 	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+// RoomClosedPayload — charge utile de TypeRoomClosed. Envoyée aux joueurs
+// restants quand le créateur de la salle la quitte volontairement : la salle
+// est supprimée côté serveur, `Message` est destiné à l'affichage direct
+// (pas de round-trip par un code d'erreur, contrairement à ErrorPayload).
+type RoomClosedPayload struct {
 	Message string `json:"message"`
 }

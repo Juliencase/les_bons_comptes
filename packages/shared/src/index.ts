@@ -25,6 +25,7 @@ export const KNOWN_MESSAGE_TYPES = [
   'leave',
   'room_state',
   'error',
+  'room_closed',
 ] as const;
 
 /** Restreint le type d'un message à ceux que ce client sait traiter. */

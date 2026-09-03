@@ -43,6 +43,7 @@ export const TypeLeave: MessageType = "leave";
  */
 export const TypeRoomState: MessageType = "room_state";
 export const TypeError: MessageType = "error";
+export const TypeRoomClosed: MessageType = "room_closed";
 /**
  * Envelope est le cadre commun à tous les messages : un discriminant et une
  * charge utile encore brute. Le décodage de `Data` dépend de `Type` — c'est au
@@ -105,5 +106,14 @@ export interface RoomStatePayload {
  */
 export interface ErrorPayload {
   code: string;
+  message: string;
+}
+/**
+ * RoomClosedPayload — charge utile de TypeRoomClosed. Envoyée aux joueurs
+ * restants quand le créateur de la salle la quitte volontairement : la salle
+ * est supprimée côté serveur, `Message` est destiné à l'affichage direct
+ * (pas de round-trip par un code d'erreur, contrairement à ErrorPayload).
+ */
+export interface RoomClosedPayload {
   message: string;
 }
