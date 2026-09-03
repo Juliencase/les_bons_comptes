@@ -52,8 +52,17 @@ func handleHealth(w http.ResponseWriter, _ *http.Request) {
 // handleAdminRooms expose l'état persisté des salles (internal/roomstore),
 // pour une vue de debug qui ne dépend pas de ce qu'un client mobile croit
 // avoir en session. Sans authentification, à dessein : voir CLAUDE.md.
+//
+// Access-Control-Allow-Origin: * est nécessaire pour que le build web de
+// l'app (autre origine que ce serveur, ex. localhost:8081 en dev) puisse lire
+// la réponse — l'app native, elle, n'est jamais concernée par CORS, qui est
+// une politique appliquée uniquement par les navigateurs. `*` plutôt que
+// vérifier `ALLOWED_ORIGINS` (comme pour /ws) : la donnée est déjà publique
+// et sans authentification, restreindre l'origine n'ajouterait aucune
+// protection réelle.
 func handleAdminRooms(store adminRoomLister, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		rooms, err := store.List()
 		if err != nil {
 			logger.Error("liste des salles admin echouee", "err", err)

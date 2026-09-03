@@ -79,7 +79,12 @@ detector as passing from a local run that didn't actually execute it.
   public with no login (see the root `CLAUDE.md`), so this endpoint is too — a
   room code is already the only thing needed to join a room, so this doesn't
   lower the bar further. Revisit only if room contents ever include something
-  more sensitive than a code, a creator name, and player names.
+  more sensitive than a code, a creator name, and player names. It also sends
+  `Access-Control-Allow-Origin: *` — the web build fetches it from a
+  different origin (its own dev server or `les-bons-comptes.valodin.fr`
+  fetching `lbc-api.valodin.fr`), and CORS only exists to protect
+  authenticated/sensitive responses from being read cross-origin, neither of
+  which applies here.
 - **`internal/roomstore`'s SQLite file is wiped on every `Open`.** The hub
   never reloads room state from it at startup (a restart always empties
   `Hub.rooms` in memory) — without the wipe, a room still open at the moment

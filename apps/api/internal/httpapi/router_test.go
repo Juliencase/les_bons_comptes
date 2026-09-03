@@ -132,4 +132,10 @@ func TestAdminRoomsRenvoieLEtatPersiste(t *testing.T) {
 	if room.Code != "1234" || room.CreatorName != "Alice" || room.CreatedAt != createdAt.Unix() {
 		t.Errorf("room = %+v, attendu code=1234 creator=Alice createdAt=%d", room, createdAt.Unix())
 	}
+
+	// Sans ce header, le build web (autre origine que ce serveur) ne peut pas
+	// lire la reponse : voir handleAdminRooms.
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Errorf("Access-Control-Allow-Origin = %q, attendu \"*\"", got)
+	}
 }
