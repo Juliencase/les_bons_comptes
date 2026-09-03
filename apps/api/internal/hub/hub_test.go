@@ -202,6 +202,82 @@ func TestRoomEncoreJoignableAvantLeDelaiDeGrace(t *testing.T) {
 	}
 }
 
+func TestLeaveDuCreateurFermeLaSalleEtPrevientLesAutres(t *testing.T) {
+	srv := newTestServer(t)
+	creator := dial(t, srv)
+	other := dial(t, srv)
+
+	send(t, creator, protocol.TypeCreate, protocol.CreatePayload{PlayerName: "Alice"})
+	created := roomState(t, receive(t, creator))
+
+	send(t, other, protocol.TypeJoin, protocol.JoinPayload{RoomCode: created.Room.Code, PlayerName: "Bob"})
+	receive(t, creator) // room_state a deux joueurs, pas verifie ici
+	receive(t, other)   // idem cote Bob
+
+	send(t, creator, protocol.TypeLeave, struct{}{})
+
+	env := receive(t, other)
+	if env.Type != protocol.TypeRoomClosed {
+		t.Fatalf("type = %q, attendu %q", env.Type, protocol.TypeRoomClosed)
+	}
+	var payload protocol.RoomClosedPayload
+	if err := json.Unmarshal(env.Data, &payload); err != nil {
+		t.Fatalf("decodage room_closed: %v", err)
+	}
+	if payload.Message == "" {
+		t.Error("message vide, attendu une explication affichable")
+	}
+
+	// writeLoop ferme la connexion juste apres avoir ecrit room_closed : une
+	// lecture ulterieure doit echouer plutot que rester bloquee ou recevoir
+	// autre chose.
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if _, _, err := other.Read(ctx); err == nil {
+		t.Error("lecture apres room_closed : attendu une erreur (connexion fermee), rien recu")
+	}
+}
+
+func TestLeaveDunNonCreateurNeFermePasLaSalle(t *testing.T) {
+	srv := newTestServer(t)
+	creator := dial(t, srv)
+	other := dial(t, srv)
+
+	send(t, creator, protocol.TypeCreate, protocol.CreatePayload{PlayerName: "Alice"})
+	created := roomState(t, receive(t, creator))
+
+	send(t, other, protocol.TypeJoin, protocol.JoinPayload{RoomCode: created.Room.Code, PlayerName: "Bob"})
+	receive(t, creator)
+	receive(t, other)
+
+	send(t, other, protocol.TypeLeave, struct{}{})
+
+	state := roomState(t, receive(t, creator))
+	if len(state.Room.Players) != 1 || state.Room.Players[0].Name != "Alice" {
+		t.Errorf("players = %+v, attendu [Alice] seule (Bob n'est pas le createur)", state.Room.Players)
+	}
+}
+
+func TestDeconnexionDuCreateurNeFermePasLaSalle(t *testing.T) {
+	srv := newTestServer(t)
+	creator := dial(t, srv)
+	other := dial(t, srv)
+
+	send(t, creator, protocol.TypeCreate, protocol.CreatePayload{PlayerName: "Alice"})
+	created := roomState(t, receive(t, creator))
+
+	send(t, other, protocol.TypeJoin, protocol.JoinPayload{RoomCode: created.Room.Code, PlayerName: "Bob"})
+	receive(t, creator)
+	receive(t, other)
+
+	creator.CloseNow() // coupure, pas un depart volontaire : la salle doit survivre
+
+	state := roomState(t, receive(t, other))
+	if len(state.Room.Players) != 1 || state.Room.Players[0].Name != "Bob" {
+		t.Errorf("players = %+v, attendu [Bob] seul (Alice deconnectee, salle pas fermee)", state.Room.Players)
+	}
+}
+
 func TestRoomExpireApresLeDelaiDeGraceSiToujoursVide(t *testing.T) {
 	srv := newTestServer(t)
 

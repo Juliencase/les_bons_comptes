@@ -118,10 +118,21 @@ type Hub struct {
 	// rooms : code de salle → clients connectés à cette salle.
 	// roomTimers : code de salle → minuteur de suppression en cours (room
 	// devenue vide, pas encore expirée).
+	// roomCreators : code de salle → client qui l'a créée via handleCreate.
+	// Sert uniquement à handleLeave, pour fermer la salle quand son créateur
+	// la quitte volontairement (voir closeRoomByCreator). removeFromRoom
+	// supprime l'entrée dès que ce client quitte la salle par un autre chemin
+	// (coupure, ou création/jointure d'une autre salle sans avoir quitté
+	// celle-ci), donc elle ne reste jamais un pointeur mort — mais une
+	// reconnexion crée un nouveau *Client : le créateur d'origine, une fois
+	// reconnecté, n'est plus reconnu comme tel pour la salle qu'il a
+	// retrouvée. Limite acceptée tant que le hub n'exploite pas PlayerID pour
+	// reconnaître un client qui revient.
 	//
-	// Ni l'une ni l'autre n'est touchée hors de Run.
-	rooms      map[string]map[*Client]struct{}
-	roomTimers map[string]*time.Timer
+	// Aucune n'est touchée hors de Run.
+	rooms        map[string]map[*Client]struct{}
+	roomTimers   map[string]*time.Timer
+	roomCreators map[string]*Client
 
 	// roomExpiryGrace : voir defaultRoomExpiryGrace. Champ plutôt que
 	// constante utilisée en dur pour rester raccourcissable en test.
@@ -138,6 +149,7 @@ func New(logger *slog.Logger) *Hub {
 		expireRoom:      make(chan string, 16),
 		rooms:           make(map[string]map[*Client]struct{}),
 		roomTimers:      make(map[string]*time.Timer),
+		roomCreators:    make(map[string]*Client),
 		roomExpiryGrace: defaultRoomExpiryGrace,
 	}
 }
@@ -193,6 +205,7 @@ func (h *Hub) handleCreate(c *Client, data json.RawMessage) {
 	c.Name = payload.PlayerName
 	c.Room = code
 	h.rooms[code] = map[*Client]struct{}{c: {}}
+	h.roomCreators[code] = c
 
 	h.logger.Info("room creee", "code", code, "clientID", c.ID)
 	h.broadcastRoomState(code)
@@ -249,10 +262,60 @@ func (h *Hub) requirePlayerName(c *Client, name string) bool {
 }
 
 // handleLeave traite un depart volontaire (le client reste connecte, il
-// quitte juste la room). handleUnregister traite la deconnexion : meme
-// nettoyage, declenche autrement.
+// quitte juste la room) — c'est le seul evenement qui peut fermer une salle
+// (voir closeRoomByCreator). handleUnregister traite la deconnexion : meme
+// nettoyage que pour un joueur quelconque (removeFromRoom), jamais de
+// fermeture — une coupure reseau du createur ne doit pas priver les autres
+// joueurs de la salle, elle doit au contraire lui laisser une chance de se
+// reconnecter comme n'importe quel autre client.
 func (h *Hub) handleLeave(c *Client) {
+	if code := c.Room; code != "" && h.roomCreators[code] == c {
+		h.closeRoomByCreator(code, c)
+		return
+	}
 	h.removeFromRoom(c)
+}
+
+// closeRoomByCreator supprime une salle quand son createur la quitte
+// volontairement, et tente de previenir les joueurs restants avant de les
+// deconnecter — "tente" : deliver() peut, comme partout ailleurs dans le hub,
+// fermer directement un client dont la file de sortie est pleine sans lui
+// avoir ecrit ce message (voir sa doc), meme compromis que pour tout autre
+// envoi. A la difference de removeFromRoom, qui gere un depart individuel
+// dans une salle qui continue d'exister, cette fonction demonte toute la
+// salle d'un coup : jamais appelee depuis handleUnregister (voir handleLeave).
+func (h *Hub) closeRoomByCreator(code string, creator *Client) {
+	clients, ok := h.rooms[code]
+	if !ok {
+		return
+	}
+
+	data, err := json.Marshal(protocol.RoomClosedPayload{
+		Message: "Le createur a quitte la salle.",
+	})
+	if err != nil {
+		h.logger.Error("encodage room_closed echoue", "err", err)
+		return
+	}
+	env := protocol.Envelope{Type: protocol.TypeRoomClosed, Data: data}
+
+	// writeLoop ferme lui-meme la connexion juste apres avoir ecrit une
+	// enveloppe room_closed (voir sa doc) : c'est la seule goroutine qui sait
+	// quand l'ecriture a reellement abouti, donc le seul endroit sur qui
+	// fermer sans risquer de couper avant que le message ne parte.
+	for other := range clients {
+		other.Room = ""
+		if other == creator {
+			continue
+		}
+		h.deliver(other, env)
+	}
+
+	delete(h.rooms, code)
+	delete(h.roomCreators, code)
+	h.cancelRoomExpiry(code)
+
+	h.logger.Info("room fermee par son createur", "code", code, "clientID", creator.ID)
 }
 
 func (h *Hub) handleUnregister(c *Client) {
@@ -268,6 +331,16 @@ func (h *Hub) removeFromRoom(c *Client) {
 		return
 	}
 	c.Room = ""
+
+	// c quitte sans passer par closeRoomByCreator (coupure, ou creation/
+	// jointure d'une autre salle sans avoir quitte celle-ci) : si c'etait son
+	// createur, l'entree devient inutilisable (plus personne ne pourra jamais
+	// la faire correspondre dans handleLeave) et doit etre nettoyee ici,
+	// sinon elle reste un pointeur mort jusqu'a l'expiration naturelle de la
+	// salle.
+	if h.roomCreators[code] == c {
+		delete(h.roomCreators, code)
+	}
 
 	clients, ok := h.rooms[code]
 	if !ok {
@@ -311,6 +384,7 @@ func (h *Hub) handleExpire(code string) {
 		return
 	}
 	delete(h.rooms, code)
+	delete(h.roomCreators, code)
 	h.logger.Info("room expiree", "code", code)
 }
 
@@ -429,6 +503,18 @@ func (h *Hub) writeLoop(ctx context.Context, c *Client) {
 			err = c.conn.Write(wctx, websocket.MessageText, data)
 			cancel()
 			if err != nil {
+				return
+			}
+			if env.Type == protocol.TypeRoomClosed {
+				// Le message vient d'etre ecrit avec succes : c'est le seul
+				// moment sur pour fermer, Close attend l'accuse du client
+				// jusqu'a 5s (voir sa doc) puis se termine de toute facon.
+				// Erreur ignoree a dessein au-dela du log : la connexion se
+				// referme de toute facon (deferred conn.CloseNow() cote
+				// HandleConn), rien de plus a tenter ici.
+				if err := c.conn.Close(websocket.StatusNormalClosure, "salle fermee"); err != nil {
+					h.logger.Warn("fermeture propre echouee apres room_closed", "clientID", c.ID, "err", err)
+				}
 				return
 			}
 		}
