@@ -116,7 +116,9 @@ export default function RoomScreen() {
         >
           <View style={styles.container}>
             <ScreenHeader
-              left={<BackButton label="Jeux" onPress={goBack} />}
+              left={
+                !isInRoom && <BackButton label="Jeux" onPress={goBack} />
+              }
             />
             <Text style={styles.title}>Multijoueur</Text>
 
