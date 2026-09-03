@@ -81,8 +81,12 @@ export default function RoomScreen() {
     }
   };
 
+  // Navigue simplement : la session persistée survit, pour retrouver la
+  // salle en revenant plus tard sur "Multijoueur" (voir useRoomSocket, la
+  // reprise automatique au montage). Le démontage de l'écran ferme le socket
+  // normalement (effet de nettoyage de useRoomSocket) ; seul le bouton
+  // "Quitter la salle" ci-dessous efface vraiment la session.
   const goBack = () => {
-    leaveRoom();
     setScreen('games');
   };
 
@@ -201,6 +205,16 @@ export default function RoomScreen() {
                   label={submitLabel}
                   onPress={submit}
                   disabled={!canSubmit}
+                />
+              </View>
+            )}
+
+            {isInRoom && (
+              <View style={styles.footer}>
+                <Button
+                  label="Quitter la salle"
+                  onPress={leaveRoom}
+                  variant="destructive"
                 />
               </View>
             )}

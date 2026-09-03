@@ -294,10 +294,16 @@ export function useRoomSocket() {
 
   // Ferme le socket et annule un éventuel retry programmé si l'écran est
   // démonté (pas de fuite, pas de reconnexion fantôme en arrière-plan).
+  // `socketRef.current` est invalidé *avant* `.close()` : `onclose` de ce
+  // socket arrive de façon asynchrone, potentiellement après ce cleanup, et
+  // son `isCurrent()` doit déjà voir `false` pour ne programmer aucun retry
+  // (même idiome que `connect`/`leaveRoom`).
   useEffect(() => {
     return () => {
       if (reconnectTimerRef.current != null) clearTimeout(reconnectTimerRef.current);
-      socketRef.current?.close();
+      const socket = socketRef.current;
+      socketRef.current = null;
+      socket?.close();
     };
   }, []);
 
