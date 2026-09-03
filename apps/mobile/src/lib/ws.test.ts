@@ -1,12 +1,13 @@
 // Tests des fonctions pures du client WS multijoueur (résolution d'URL,
 // parsing d'enveloppe), et des petits modules de persistance/retry qui
-// l'accompagnent (playerIdentity, roomSession, reconnect). Le hook
-// useRoomSocket lui-même n'est pas testé ici : il n'y a pas de
+// l'accompagnent (playerIdentity, playerName, roomSession, reconnect). Le
+// hook useRoomSocket lui-même n'est pas testé ici : il n'y a pas de
 // @testing-library/react-native dans ce repo (cf. CLAUDE.md).
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TypeJoin } from '@lbc/shared';
 import { parseEnvelope, resolveWsUrl } from './ws';
 import { getOrCreatePlayerId } from './playerIdentity';
+import { getSavedPlayerName, savePlayerName } from './playerName';
 import { computeBackoffDelayMs } from './reconnect';
 import { clearRoomSession, loadRoomSession, saveRoomSession } from './roomSession';
 
@@ -84,6 +85,27 @@ describe('getOrCreatePlayerId', () => {
     await AsyncStorage.clear();
     const second = await getOrCreatePlayerId();
     expect(second).not.toBe(first);
+  });
+});
+
+describe('playerName', () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+  });
+
+  it("ne renvoie rien tant qu'aucun nom n'a été mémorisé", async () => {
+    expect(await getSavedPlayerName()).toBeNull();
+  });
+
+  it('relit exactement le nom sauvegardé', async () => {
+    await savePlayerName('Alice');
+    expect(await getSavedPlayerName()).toBe('Alice');
+  });
+
+  it('remplace le nom mémorisé par le plus récent', async () => {
+    await savePlayerName('Alice');
+    await savePlayerName('Bob');
+    expect(await getSavedPlayerName()).toBe('Bob');
   });
 });
 

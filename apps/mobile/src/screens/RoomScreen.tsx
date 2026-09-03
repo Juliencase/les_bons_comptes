@@ -2,7 +2,7 @@
 // code (WebSocket, apps/api). Une coupure après connexion passe par l'état
 // `reconnecting` (useRoomSocket) : la salle reste affichée, avec une petite
 // bannière, plutôt que de retomber sur le formulaire.
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -23,6 +23,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import SegmentedToggle, {
   SegmentedOption,
 } from '../components/SegmentedToggle';
+import { getSavedPlayerName, savePlayerName } from '../lib/playerName';
 import { useRoomSocket } from '../lib/ws';
 import { useStore } from '../lib/store';
 import { alpha, colors, fonts, opacity } from '../theme';
@@ -45,6 +46,19 @@ export default function RoomScreen() {
   const { status, room, errorMessage, createRoom, joinRoom, leaveRoom } =
     useRoomSocket();
 
+  // Préremplit le nom avec la dernière valeur mémorisée (voir submit, qui la
+  // met à jour) — seulement si l'utilisateur n'a rien tapé entre-temps.
+  useEffect(() => {
+    let cancelled = false;
+    void getSavedPlayerName().then((saved) => {
+      if (cancelled || !saved) return;
+      setPlayerName((current) => (current === '' ? saved : current));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const isJoinMode = mode === 'join';
   const trimmedName = playerName.trim();
   const isConnecting = status === 'connecting';
@@ -59,6 +73,7 @@ export default function RoomScreen() {
 
   const submit = () => {
     if (!canSubmit) return;
+    void savePlayerName(trimmedName);
     if (isJoinMode) {
       joinRoom(roomCode, trimmedName);
     } else {
