@@ -15,6 +15,7 @@ import {
   TypeCreate,
   TypeError as TypeErrorMessage,
   TypeJoin,
+  TypeLeave,
   TypeRoomClosed,
   TypeRoomState,
 } from '@lbc/shared';
@@ -308,6 +309,15 @@ export function useRoomSocket() {
     clearReconnectTimer();
     requestIdRef.current += 1;
     sessionRef.current = null;
+    // Prévient le hub qu'il s'agit d'un départ volontaire — seul un vrai
+    // `leave` (par opposition à une simple coupure détectée par le serveur)
+    // lui permet de distinguer "le créateur ferme sa salle" de "le créateur
+    // a perdu le réseau", ce second cas devant continuer à laisser une
+    // chance de reconnexion. Best-effort : le socket peut déjà être en train
+    // de se fermer, auquel cas on ne bloque pas dessus.
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({ type: TypeLeave, data: {} }));
+    }
     closeSocket();
     void clearRoomSession();
     setState(IDLE_STATE);
