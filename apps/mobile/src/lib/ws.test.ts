@@ -1,8 +1,21 @@
 // Tests des fonctions pures du client WS multijoueur (résolution d'URL,
-// parsing d'enveloppe). Le hook useRoomSocket n'est pas testé ici : il n'y a
-// pas de @testing-library/react-native dans ce repo (cf. CLAUDE.md).
+// parsing d'enveloppe), et des petits modules de persistance/retry qui
+// l'accompagnent (playerIdentity, roomSession, reconnect). Le hook
+// useRoomSocket lui-même n'est pas testé ici : il n'y a pas de
+// @testing-library/react-native dans ce repo (cf. CLAUDE.md).
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TypeJoin } from '@lbc/shared';
 import { parseEnvelope, resolveWsUrl } from './ws';
+import { getOrCreatePlayerId } from './playerIdentity';
+import { computeBackoffDelayMs } from './reconnect';
+import { clearRoomSession, loadRoomSession, saveRoomSession } from './roomSession';
+
+// AsyncStorage n'existe pas hors app : le mock officiel du package suffit,
+// même pattern que store.test.ts.
+jest.mock('@react-native-async-storage/async-storage', () =>
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock factory runs before ESM imports are available
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
+);
 
 describe('resolveWsUrl', () => {
   const original = process.env.EXPO_PUBLIC_WS_URL;
@@ -46,5 +59,94 @@ describe('parseEnvelope', () => {
     expect(parseEnvelope(42)).toBeNull();
     expect(parseEnvelope(null)).toBeNull();
     expect(parseEnvelope(undefined)).toBeNull();
+  });
+});
+
+describe('getOrCreatePlayerId', () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+  });
+
+  it('génère un identifiant non vide', async () => {
+    const id = await getOrCreatePlayerId();
+    expect(typeof id).toBe('string');
+    expect(id.length).toBeGreaterThan(0);
+  });
+
+  it('retourne le même identifiant à chaque appel (persistance)', async () => {
+    const first = await getOrCreatePlayerId();
+    const second = await getOrCreatePlayerId();
+    expect(second).toBe(first);
+  });
+
+  it('génère un identifiant différent après un stockage vidé (nouvelle installation)', async () => {
+    const first = await getOrCreatePlayerId();
+    await AsyncStorage.clear();
+    const second = await getOrCreatePlayerId();
+    expect(second).not.toBe(first);
+  });
+});
+
+describe('roomSession', () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+  });
+
+  it("ne renvoie rien tant qu'aucune session n'a été sauvegardée", async () => {
+    expect(await loadRoomSession()).toBeNull();
+  });
+
+  it('relit exactement la session sauvegardée', async () => {
+    await saveRoomSession({ roomCode: '1234', playerName: 'Alice' });
+    expect(await loadRoomSession()).toEqual({
+      roomCode: '1234',
+      playerName: 'Alice',
+    });
+  });
+
+  it('efface la session persistée', async () => {
+    await saveRoomSession({ roomCode: '1234', playerName: 'Alice' });
+    await clearRoomSession();
+    expect(await loadRoomSession()).toBeNull();
+  });
+
+  it('ignore un contenu JSON invalide sans lever', async () => {
+    const spy = jest
+      .spyOn(AsyncStorage, 'getItem')
+      .mockResolvedValueOnce('{ceci-nest-pas-du-json');
+    expect(await loadRoomSession()).toBeNull();
+    spy.mockRestore();
+  });
+
+  it("ignore une valeur qui n'a pas la forme d'une session", async () => {
+    const spy = jest
+      .spyOn(AsyncStorage, 'getItem')
+      .mockResolvedValueOnce(JSON.stringify({ foo: 'bar' }));
+    expect(await loadRoomSession()).toBeNull();
+    spy.mockRestore();
+  });
+});
+
+describe('computeBackoffDelayMs', () => {
+  const originalRandom = Math.random;
+
+  afterEach(() => {
+    Math.random = originalRandom;
+  });
+
+  it('double le délai de base à chaque tentative, jusqu’au plafond', () => {
+    Math.random = () => 0; // neutralise le jitter pour isoler la progression
+    expect(computeBackoffDelayMs(0)).toBe(1000);
+    expect(computeBackoffDelayMs(1)).toBe(2000);
+    expect(computeBackoffDelayMs(2)).toBe(4000);
+    expect(computeBackoffDelayMs(3)).toBe(8000);
+    expect(computeBackoffDelayMs(4)).toBe(15000); // 16000 plafonné à 15000
+    expect(computeBackoffDelayMs(10)).toBe(15000); // reste plafonné au-delà
+  });
+
+  it('ajoute un jitter positif borné à 20 % du délai plafonné', () => {
+    Math.random = () => 1; // pire cas : jitter maximal
+    expect(computeBackoffDelayMs(0)).toBeCloseTo(1200);
+    expect(computeBackoffDelayMs(4)).toBeCloseTo(18000);
   });
 });

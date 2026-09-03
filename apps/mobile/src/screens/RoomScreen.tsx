@@ -1,8 +1,7 @@
 // Écran multijoueur : créer une salle à distance ou en rejoindre une avec un
-// code (WebSocket, apps/api). Le hub Go n'est pas encore branché
-// (apps/api/internal/hub) — la connexion échoue systématiquement pour
-// l'instant ; cet écran gère cet échec proprement (message clair, bouton pour
-// réessayer) sans jamais planter.
+// code (WebSocket, apps/api). Une coupure après connexion passe par l'état
+// `reconnecting` (useRoomSocket) : la salle reste affichée, avec une petite
+// bannière, plutôt que de retomber sur le formulaire.
 import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -39,16 +38,20 @@ const ROOM_CODE_LENGTH = 4;
 
 export default function RoomScreen() {
   const setScreen = useStore((s) => s.setScreen);
-  const [mode, setMode] = useState<RoomMode>('create');
+  const [mode, setMode] = useState<RoomMode>('join');
   const [playerName, setPlayerName] = useState('');
   const [roomCode, setRoomCode] = useState('');
   const codeInputRef = useRef<TextInput>(null);
-  const { status, room, errorMessage, createRoom, joinRoom } =
+  const { status, room, errorMessage, createRoom, joinRoom, leaveRoom } =
     useRoomSocket();
 
   const isJoinMode = mode === 'join';
   const trimmedName = playerName.trim();
   const isConnecting = status === 'connecting';
+  const isReconnecting = status === 'reconnecting';
+  // Une reconnexion garde la dernière salle connue affichée (bannière plutôt
+  // que retour au formulaire) : voir useRoomSocket, état `reconnecting`.
+  const isInRoom = status === 'connected' || isReconnecting;
   const canSubmit =
     trimmedName.length > 0 &&
     !isConnecting &&
@@ -61,6 +64,11 @@ export default function RoomScreen() {
     } else {
       createRoom(trimmedName);
     }
+  };
+
+  const goBack = () => {
+    leaveRoom();
+    setScreen('games');
   };
 
   const submitLabel =
@@ -79,9 +87,7 @@ export default function RoomScreen() {
         >
           <View style={styles.container}>
             <ScreenHeader
-              left={
-                <BackButton label="Jeux" onPress={() => setScreen('games')} />
-              }
+              left={<BackButton label="Jeux" onPress={goBack} />}
             />
             <Text style={styles.title}>Multijoueur</Text>
 
@@ -89,8 +95,16 @@ export default function RoomScreen() {
               contentContainerStyle={styles.body}
               keyboardShouldPersistTaps="handled"
             >
-              {status === 'connected' && room ? (
-                <RoomCodeCard code={room.code} players={room.players} />
+              {isInRoom && room ? (
+                <View style={styles.room}>
+                  {isReconnecting && (
+                    <View style={styles.connecting}>
+                      <ActivityIndicator color={colors.sanguine} />
+                      <Text style={styles.connectingText}>Reconnexion…</Text>
+                    </View>
+                  )}
+                  <RoomCodeCard code={room.code} players={room.players} />
+                </View>
               ) : (
                 <View style={styles.form}>
                   <View
@@ -166,7 +180,7 @@ export default function RoomScreen() {
               )}
             </ScrollView>
 
-            {status !== 'connected' && (
+            {!isInRoom && (
               <View style={styles.footer}>
                 <Button
                   label={submitLabel}
@@ -195,6 +209,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   body: { paddingVertical: 22, flexGrow: 1 },
+  room: { gap: 18 },
   form: { gap: 18 },
   toggleDisabled: { opacity: opacity.disabled },
   hint: {
