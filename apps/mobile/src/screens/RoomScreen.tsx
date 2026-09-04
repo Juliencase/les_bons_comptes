@@ -1,8 +1,10 @@
 // Écran multijoueur : créer une salle à distance ou en rejoindre une avec un
-// code (WebSocket, apps/api). Le hub Go n'est pas encore branché
-// (apps/api/internal/hub) — la connexion échoue systématiquement pour
-// l'instant ; cet écran gère cet échec proprement (message clair, bouton pour
-// réessayer) sans jamais planter.
+// code (WebSocket, apps/api). Une coupure après connexion passe par l'état
+// `reconnecting` (useRoomSocket) : la salle reste affichée, avec une petite
+// bannière, plutôt que de retomber sur le formulaire. Au montage, tant que
+// `isResuming` (useRoomSocket) est vrai — le temps de savoir si une session
+// persistée doit être retrouvée — ni le formulaire ni la salle ne s'affichent,
+// pour éviter le flash du formulaire vide avant bascule sur la salle en cours.
 import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -39,16 +41,34 @@ const ROOM_CODE_LENGTH = 4;
 
 export default function RoomScreen() {
   const setScreen = useStore((s) => s.setScreen);
-  const [mode, setMode] = useState<RoomMode>('create');
-  const [playerName, setPlayerName] = useState('');
+  const setSavedPlayerName = useStore((s) => s.setSavedPlayerName);
+  const [mode, setMode] = useState<RoomMode>('join');
+  // Préremplit le nom avec la dernière valeur mémorisée (voir submit, qui la
+  // met à jour) — lecture synchrone, le store est déjà hydraté avant que cet
+  // écran ne monte (voir App.tsx).
+  const [playerName, setPlayerName] = useState(
+    () => useStore.getState().savedPlayerName ?? '',
+  );
   const [roomCode, setRoomCode] = useState('');
   const codeInputRef = useRef<TextInput>(null);
-  const { status, room, errorMessage, createRoom, joinRoom } =
-    useRoomSocket();
+  const {
+    status,
+    room,
+    errorMessage,
+    isResuming,
+    isCreator,
+    createRoom,
+    joinRoom,
+    leaveRoom,
+  } = useRoomSocket();
 
   const isJoinMode = mode === 'join';
   const trimmedName = playerName.trim();
   const isConnecting = status === 'connecting';
+  const isReconnecting = status === 'reconnecting';
+  // Une reconnexion garde la dernière salle connue affichée (bannière plutôt
+  // que retour au formulaire) : voir useRoomSocket, état `reconnecting`.
+  const isInRoom = status === 'connected' || isReconnecting;
   const canSubmit =
     trimmedName.length > 0 &&
     !isConnecting &&
@@ -56,11 +76,21 @@ export default function RoomScreen() {
 
   const submit = () => {
     if (!canSubmit) return;
+    setSavedPlayerName(trimmedName);
     if (isJoinMode) {
       joinRoom(roomCode, trimmedName);
     } else {
       createRoom(trimmedName);
     }
+  };
+
+  // Navigue simplement : la session persistée survit, pour retrouver la
+  // salle en revenant plus tard sur "Multijoueur" (voir useRoomSocket, la
+  // reprise automatique au montage). Le démontage de l'écran ferme le socket
+  // normalement (effet de nettoyage de useRoomSocket) ; seul le bouton
+  // "Quitter la salle" ci-dessous efface vraiment la session.
+  const goBack = () => {
+    setScreen('games');
   };
 
   const submitLabel =
@@ -69,6 +99,12 @@ export default function RoomScreen() {
       : isJoinMode
         ? 'Rejoindre la salle'
         : 'Créer la salle';
+
+  // Le créateur qui quitte fait littéralement disparaître la salle pour tout
+  // le monde (le hub la supprime et prévient les autres joueurs) — un simple
+  // participant, lui, ne fait que sortir sans affecter la salle. Le libellé
+  // doit dire ce qui se passe réellement plutôt que rester générique.
+  const leaveLabel = isCreator ? 'Supprimer la salle' : 'Quitter la salle';
 
   return (
     <ScreenBackground>
@@ -79,9 +115,7 @@ export default function RoomScreen() {
         >
           <View style={styles.container}>
             <ScreenHeader
-              left={
-                <BackButton label="Jeux" onPress={() => setScreen('games')} />
-              }
+              left={!isInRoom && <BackButton label="Jeux" onPress={goBack} />}
             />
             <Text style={styles.title}>Multijoueur</Text>
 
@@ -89,8 +123,23 @@ export default function RoomScreen() {
               contentContainerStyle={styles.body}
               keyboardShouldPersistTaps="handled"
             >
-              {status === 'connected' && room ? (
-                <RoomCodeCard code={room.code} players={room.players} />
+              {isResuming ? (
+                <View style={styles.connecting}>
+                  <ActivityIndicator color={colors.sanguine} />
+                  <Text style={styles.connectingText}>
+                    Reprise de la salle…
+                  </Text>
+                </View>
+              ) : isInRoom && room ? (
+                <View style={styles.room}>
+                  {isReconnecting && (
+                    <View style={styles.connecting}>
+                      <ActivityIndicator color={colors.sanguine} />
+                      <Text style={styles.connectingText}>Reconnexion…</Text>
+                    </View>
+                  )}
+                  <RoomCodeCard code={room.code} players={room.players} />
+                </View>
               ) : (
                 <View style={styles.form}>
                   <View
@@ -166,12 +215,22 @@ export default function RoomScreen() {
               )}
             </ScrollView>
 
-            {status !== 'connected' && (
+            {!isResuming && !isInRoom && (
               <View style={styles.footer}>
                 <Button
                   label={submitLabel}
                   onPress={submit}
                   disabled={!canSubmit}
+                />
+              </View>
+            )}
+
+            {isInRoom && (
+              <View style={styles.footer}>
+                <Button
+                  label={leaveLabel}
+                  onPress={leaveRoom}
+                  variant="destructive"
                 />
               </View>
             )}
@@ -195,6 +254,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   body: { paddingVertical: 22, flexGrow: 1 },
+  room: { gap: 18 },
   form: { gap: 18 },
   toggleDisabled: { opacity: opacity.disabled },
   hint: {

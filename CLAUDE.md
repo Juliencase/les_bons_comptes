@@ -20,9 +20,11 @@ you are inside it. **Read the one for the directory you are about to touch** —
 this file only covers what spans them.
 
 The app is local-only and offline: game state lives on-device in AsyncStorage.
-`apps/api` exists so that shared/synchronised games become possible later, and
-as a deliberate Go learning exercise (see `apps/api/CLAUDE.md` — some of it is
-scaffolded on purpose and must **not** be written for the user).
+`apps/api` exists so that shared/synchronised games become possible later. It
+used to double as a deliberate Go learning exercise with parts of it
+off-limits to write for the user; that's retired (see `apps/api/CLAUDE.md`) —
+the user now learns Go on a separate project, and `apps/api` is fully
+delegable here.
 
 ## Layout and why it is this way
 
@@ -130,11 +132,11 @@ on a GitHub runner, not the Pi, and needs the `EXPO_TOKEN` repo secret.
 - **`react-native-expert`** — executes. Delegate component/screen/hook work,
   refactors, and anything where clean code and architecture matter in
   `apps/mobile`.
-- **`go-expert`** — **teaches, and does not write the interesting code.** The
-  Go backend exists partly so the user learns Go. It explains, reviews, and
-  writes boilerplate, but concurrency (`internal/hub/`, `internal/game/`) is
-  the user's to write. See `apps/api/CLAUDE.md` for exactly where that line
-  sits.
+- **`go-expert`** — writes Go for `apps/api`, `internal/hub/`/`internal/game/`
+  concurrency included. It used to be tutor-only (the backend doubled as a Go
+  learning exercise) but that's retired — the user learns Go on a separate
+  project now and needs this one delivered, not taught. See
+  `apps/api/CLAUDE.md`.
 
 `.claude/skills/task` (`/task`) orchestrates a full feature/fix flow with
 approval checkpoints.

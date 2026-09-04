@@ -43,6 +43,7 @@ export const TypeLeave: MessageType = "leave";
  */
 export const TypeRoomState: MessageType = "room_state";
 export const TypeError: MessageType = "error";
+export const TypeRoomClosed: MessageType = "room_closed";
 /**
  * Envelope est le cadre commun à tous les messages : un discriminant et une
  * charge utile encore brute. Le décodage de `Data` dépend de `Type` — c'est au
@@ -72,18 +73,27 @@ export interface Room {
  * code de room et y ajoute directement l'émetteur comme premier joueur (pas
  * de round-trip create puis join pour le créateur) ; la réponse est un
  * TypeRoomState classique, code inclus.
+ * PlayerID est un identifiant stable généré et persisté côté client (pas par
+ * connexion, contrairement à l'ID interne du hub) : il permet à une
+ * reconnexion d'être reconnue comme le même joueur plutôt que traitée comme
+ * un nouvel arrivant. Le hub ne l'exploite aujourd'hui que pour reconnaître
+ * un créateur qui revient (roomCreatorPlayerIDs dans hub.go) — pas encore
+ * pour fusionner l'ancienne et la nouvelle entrée d'un joueur quelconque dans
+ * la liste de la salle.
  */
 export interface CreatePayload {
   playerName: string;
+  playerId: string;
 }
 /**
  * JoinPayload — charge utile de TypeJoin. Utilisé par tout joueur qui
  * rejoint une room existante après sa création, créateur exclu (voir
- * CreatePayload).
+ * CreatePayload). PlayerID : voir CreatePayload.
  */
 export interface JoinPayload {
   roomCode: string;
   playerName: string;
+  playerId: string;
 }
 /**
  * RoomStatePayload — charge utile de TypeRoomState. Le serveur renvoie l'état
@@ -100,4 +110,35 @@ export interface RoomStatePayload {
 export interface ErrorPayload {
   code: string;
   message: string;
+}
+/**
+ * RoomClosedPayload — charge utile de TypeRoomClosed. Envoyée aux joueurs
+ * restants quand le créateur de la salle la quitte volontairement : la salle
+ * est supprimée côté serveur, `Message` est destiné à l'affichage direct
+ * (pas de round-trip par un code d'erreur, contrairement à ErrorPayload).
+ */
+export interface RoomClosedPayload {
+  message: string;
+}
+/**
+ * AdminRoomSnapshot — une salle telle que persistée par internal/roomstore,
+ * renvoyée par GET /admin/rooms. Pas un message de l'Envelope (c'est du REST
+ * classique, pas du WebSocket) mais un contrat qui traverse quand même le
+ * réseau, donc défini ici avec le reste — voir la doc du paquet.
+ */
+export interface AdminRoomSnapshot {
+  code: string;
+  creatorName: string;
+  players: Player[];
+  /**
+   * CreatedAt : secondes Unix (pas time.Time, pour rester un JSON trivial à
+   * lire côté TS sans dépendance de parsing de date).
+   */
+  createdAt: number /* int64 */;
+}
+/**
+ * AdminRoomsResponse — charge utile de GET /admin/rooms.
+ */
+export interface AdminRoomsResponse {
+  rooms: AdminRoomSnapshot[];
 }

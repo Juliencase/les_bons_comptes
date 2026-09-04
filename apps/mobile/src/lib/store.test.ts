@@ -38,9 +38,25 @@ function playerIds(): string[] {
   return activeGame().players.map((p) => p.id);
 }
 
+/** État de repos du slice de connexion multijoueur (voir lib/ws.ts). */
+const IDLE_ROOM_CONNECTION = {
+  status: 'idle' as const,
+  room: null,
+  errorMessage: null,
+  isCreator: false,
+  isResuming: true,
+};
+
 beforeEach(() => {
   // Le store est un singleton : on repart d'un état neuf à chaque test.
-  useStore.setState({ screen: 'games', game: null, beloteGame: null });
+  useStore.setState({
+    screen: 'games',
+    game: null,
+    beloteGame: null,
+    roomConnection: IDLE_ROOM_CONNECTION,
+    roomSession: null,
+    savedPlayerName: null,
+  });
 });
 
 describe('startGame', () => {
@@ -345,5 +361,80 @@ describe('migratePersistedState', () => {
     expect(
       migratePersistedState({ game: null, beloteGame: null }, 0).game,
     ).toBeNull();
+  });
+});
+
+describe('connexion et session de salle multijoueur', () => {
+  it('setRoomConnection remplace intégralement le slice de connexion', () => {
+    useStore.getState().setRoomConnection({
+      status: 'connected',
+      room: { code: '1234', players: [] },
+      errorMessage: null,
+      isCreator: true,
+      isResuming: false,
+    });
+
+    expect(useStore.getState().roomConnection).toEqual({
+      status: 'connected',
+      room: { code: '1234', players: [] },
+      errorMessage: null,
+      isCreator: true,
+      isResuming: false,
+    });
+  });
+
+  it('setRoomSession mémorise la session, null l’efface', () => {
+    useStore.getState().setRoomSession({
+      roomCode: '1234',
+      playerName: 'Alice',
+      isCreator: true,
+    });
+    expect(useStore.getState().roomSession).toEqual({
+      roomCode: '1234',
+      playerName: 'Alice',
+      isCreator: true,
+    });
+
+    useStore.getState().setRoomSession(null);
+    expect(useStore.getState().roomSession).toBeNull();
+  });
+
+  it('setSavedPlayerName mémorise le dernier nom saisi', () => {
+    useStore.getState().setSavedPlayerName('Alice');
+    expect(useStore.getState().savedPlayerName).toBe('Alice');
+
+    useStore.getState().setSavedPlayerName('Bob');
+    expect(useStore.getState().savedPlayerName).toBe('Bob');
+  });
+
+  it('partialize persiste roomSession/savedPlayerName mais jamais roomConnection', () => {
+    useStore.getState().setRoomSession({
+      roomCode: '1234',
+      playerName: 'Alice',
+      isCreator: false,
+    });
+    useStore.getState().setSavedPlayerName('Alice');
+    useStore.getState().setRoomConnection({
+      status: 'connected',
+      room: { code: '1234', players: [] },
+      errorMessage: null,
+      isCreator: false,
+      isResuming: false,
+    });
+
+    const partialize = useStore.persist.getOptions().partialize;
+    expect(partialize).toBeDefined();
+    const persisted = partialize!(useStore.getState()) as Record<
+      string,
+      unknown
+    >;
+
+    expect(persisted).not.toHaveProperty('roomConnection');
+    expect(persisted.roomSession).toEqual({
+      roomCode: '1234',
+      playerName: 'Alice',
+      isCreator: false,
+    });
+    expect(persisted.savedPlayerName).toBe('Alice');
   });
 });

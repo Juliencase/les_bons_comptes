@@ -2,7 +2,16 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BidKind, Game, GameSetup, Player, RoundEntry, Screen } from './types';
+import {
+  BidKind,
+  Game,
+  GameSetup,
+  Player,
+  RoomConnectionState,
+  RoomSession,
+  RoundEntry,
+  Screen,
+} from './types';
 import { DEFAULT_BID_KIND } from './scoring';
 import { BeloteGame, BeloteHandEntry, BeloteTeam } from './belote/types';
 import { HAND_TOTAL_POINTS, winningTeamId } from './belote/scoring';
@@ -109,8 +118,37 @@ function createBeloteGame(
 
 // --- Persistance -------------------------------------------------------------
 
-/** Forme du state persisté (cf. partialize : les deux parties, pas l'écran courant). */
-type PersistedState = { game?: Game | null; beloteGame?: BeloteGame | null };
+/**
+ * Forme du state persisté (cf. partialize : les deux parties, la session de
+ * salle et le nom mémorisé — pas l'écran courant, pas la connexion en cours).
+ * `roomSession`/`savedPlayerName` sont additifs et optionnels à dessein : un
+ * blob stocké avant leur introduction n'en a pas et doit continuer à
+ * réhydrater sans planter (ils retombent alors sur leurs valeurs par défaut,
+ * `null`, via le state initial — pas besoin de migration ni de bump de
+ * PERSIST_VERSION pour un simple ajout de champs optionnels).
+ */
+type PersistedState = {
+  game?: Game | null;
+  beloteGame?: BeloteGame | null;
+  roomSession?: RoomSession | null;
+  savedPlayerName?: string | null;
+};
+
+/**
+ * Garde de forme pour une `RoomSession` lue depuis AsyncStorage — même
+ * contrat que l'ancien `isRoomSession()` de roomSession.ts (retiré avec ce
+ * fichier) : un contenu absent ou de forme inattendue ne doit jamais être
+ * traité comme une session valide.
+ */
+function isRoomSession(value: unknown): value is RoomSession {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as RoomSession).roomCode === 'string' &&
+    typeof (value as RoomSession).playerName === 'string' &&
+    typeof (value as RoomSession).isCreator === 'boolean'
+  );
+}
 
 export const PERSIST_VERSION = 2;
 
@@ -145,6 +183,12 @@ export function migratePersistedState(persisted: unknown, version: number) {
     state = { ...state, game: migrated };
   }
 
+  // Non versionné à dessein (voir isRoomSession) : une session malformée doit
+  // être écartée quelle que soit la version dont l'état migre.
+  if (state?.roomSession != null && !isRoomSession(state.roomSession)) {
+    state = { ...state, roomSession: null };
+  }
+
   return state;
 }
 
@@ -155,6 +199,15 @@ type State = {
   game: Game | null;
   beloteGame: BeloteGame | null;
   hydrated: boolean; // persist rehydration terminée
+  // État de connexion à une salle multijoueur, tenu par useRoomSocket
+  // (src/lib/ws.ts) — non persisté, voir partialize plus bas.
+  roomConnection: RoomConnectionState;
+  // Session de salle persistée, pour la reprise automatique au montage de
+  // RoomScreen (voir useRoomSocket) — `null` hors de toute salle.
+  roomSession: RoomSession | null;
+  // Dernier nom de joueur saisi dans RoomScreen, mémorisé pour préremplir le
+  // formulaire une prochaine fois — indépendant de `roomSession`.
+  savedPlayerName: string | null;
 };
 
 type Actions = {
@@ -183,6 +236,13 @@ type Actions = {
   setHandBeloteRebelote: (hand: number, teamId: string | null) => void;
   commitBeloteHand: () => void;
   goToBeloteHand: (hand: number) => void;
+  // Remplacement complet du slice de connexion (jamais un patch partiel) :
+  // c'est exactement la sémantique que useRoomSocket applique déjà à chaque
+  // transition d'état de la WebSocket.
+  setRoomConnection: (next: RoomConnectionState) => void;
+  // `null` efface la session persistée (équivalent de l'ancien clearRoomSession()).
+  setRoomSession: (session: RoomSession | null) => void;
+  setSavedPlayerName: (name: string) => void;
 };
 
 export const useStore = create<State & Actions>()(
@@ -192,6 +252,18 @@ export const useStore = create<State & Actions>()(
       game: null,
       beloteGame: null,
       hydrated: false,
+      roomConnection: {
+        status: 'idle',
+        room: null,
+        errorMessage: null,
+        isCreator: false,
+        // Le hook décide dès son montage s'il y a une session à reprendre ;
+        // `true` par défaut pour ne jamais flasher le formulaire vide avant
+        // cette décision (cf. useRoomSocket).
+        isResuming: true,
+      },
+      roomSession: null,
+      savedPlayerName: null,
 
       markHydrated: () => set({ hydrated: true }),
 
@@ -336,14 +408,25 @@ export const useStore = create<State & Actions>()(
           screen: 'belote-round',
         });
       },
+
+      setRoomConnection: (next) => set({ roomConnection: next }),
+
+      setRoomSession: (session) => set({ roomSession: session }),
+
+      setSavedPlayerName: (name) => set({ savedPlayerName: name }),
     }),
     {
       name: 'skullking-store',
       storage: createJSONStorage(() => AsyncStorage),
-      // On ne persiste que les parties, pas l'écran courant ni l'état d'hydratation.
+      // On ne persiste que les parties, la session de salle et le nom mémorisé —
+      // pas l'écran courant, pas l'état d'hydratation, et surtout pas
+      // `roomConnection` : une connexion WebSocket ne se restaure pas depuis
+      // AsyncStorage, elle doit toujours repartir de zéro au démarrage.
       partialize: (state) => ({
         game: state.game,
         beloteGame: state.beloteGame,
+        roomSession: state.roomSession,
+        savedPlayerName: state.savedPlayerName,
       }),
       onRehydrateStorage: () => (state, error) => {
         // Sans ce garde-fou, un storage corrompu ou une migration qui jette

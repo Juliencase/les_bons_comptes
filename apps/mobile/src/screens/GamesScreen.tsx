@@ -13,6 +13,8 @@ export default function GamesScreen() {
   const setScreen = useStore((s) => s.setScreen);
   const game = useStore((s) => s.game);
   const beloteGame = useStore((s) => s.beloteGame);
+  const roomSession = useStore((s) => s.roomSession);
+  const hasOwnRoomInProgress = roomSession?.isCreator === true;
   const inProgress = new Map(
     [
       game && !game.finishedAt
@@ -62,14 +64,21 @@ export default function GamesScreen() {
           <Pressable
             onPress={() => setScreen('room')}
             accessibilityRole="button"
-            accessibilityLabel="Multijoueur — créer ou rejoindre une salle à distance"
+            accessibilityLabel={
+              hasOwnRoomInProgress
+                ? 'Multijoueur — salle en cours, créer ou rejoindre une salle à distance'
+                : 'Multijoueur — créer ou rejoindre une salle à distance'
+            }
             style={({ pressed }) => [
               styles.multiplayer,
               pressed && styles.multiplayerPressed,
             ]}
           >
             <View>
-              <Text style={styles.multiplayerName}>Multijoueur</Text>
+              <View style={styles.multiplayerTitleRow}>
+                <Text style={styles.multiplayerName}>Multijoueur</Text>
+                {hasOwnRoomInProgress && <View style={styles.multiplayerDot} />}
+              </View>
               <Text style={styles.multiplayerMeta}>
                 Créer ou rejoindre une salle à distance
               </Text>
@@ -131,12 +140,26 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   multiplayerPressed: { borderColor: colors.sanguine },
+  multiplayerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   multiplayerName: {
     fontFamily: fonts.displayBlack,
     fontSize: 26,
     lineHeight: Math.round(26 * 0.9),
     textTransform: 'uppercase',
     color: colors.creme,
+  },
+  // Pastille : une salle qu'on a créée soi-même est toujours en cours quelque
+  // part (voir hasOwnRoomInProgress) — signale qu'y retourner reprend une
+  // partie plutôt que d'en ouvrir une nouvelle.
+  multiplayerDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.sanguine,
   },
   multiplayerMeta: {
     fontFamily: fonts.mono,

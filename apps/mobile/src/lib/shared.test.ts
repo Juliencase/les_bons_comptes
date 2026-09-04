@@ -12,6 +12,7 @@ import {
   TypeError as TypeErrorMessage,
   TypeJoin,
   TypeLeave,
+  TypeRoomClosed,
   TypeRoomState,
   Version,
 } from '@lbc/shared';
@@ -31,10 +32,11 @@ describe('contrat partagé', () => {
       TypeLeave,
       TypeRoomState,
       TypeErrorMessage,
+      TypeRoomClosed,
     ]) {
       expect(isKnownMessageType(type)).toBe(true);
     }
-    expect(KNOWN_MESSAGE_TYPES).toHaveLength(5);
+    expect(KNOWN_MESSAGE_TYPES).toHaveLength(6);
   });
 
   it('rejette un type de message inventé', () => {
